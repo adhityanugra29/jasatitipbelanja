@@ -1,6 +1,6 @@
 {
   "name": "jasa-titip-belanja",
   "private": true,
-  "scripts": { "start": "node server.js", "seed": "node seed.js" },
+  "scripts": { "start": "node server.js", "seed": "node seed.js", "cek-db": "node cek-db.js" },
   "dependencies": { "mongodb": "^6.10.0" }
 }

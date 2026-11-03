@@ -66,6 +66,13 @@ Sertakan nama database di alamat MongoDB (`…mongodb.net/jasatitipbelanja?…`)
 4. Klik **Deploy**. Setiap `git push` ke `main` akan men-deploy ulang otomatis.
 5. *(Opsional)* Untuk membawa data contoh dari komputer ini: `$env:MONGODB_URI="…"; node seed.js`. Tanpa ini toko mulai kosong.
 
+**Cek alamat MongoDB** sebelum dipasang di Vercel (hanya menampilkan host, tidak pernah password):
+
+```powershell
+$env:MONGODB_URI = "mongodb+srv://USER:PASSWORD@CLUSTER.mongodb.net/jasatitipbelanja?retryWrites=true&w=majority"
+npm run cek-db
+```
+
 **Sebelum dipakai pelanggan:**
 - Ganti rekening contoh di konstanta `BANK` di `server.js`. Rekening sengaja disimpan di kode, bukan di formulir admin.
 - Isi **Pengaturan → Invoice** (nama toko, alamat, telepon) dan nomor WhatsApp di **Pengaturan → Toko**.
