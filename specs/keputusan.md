@@ -18,6 +18,7 @@ Format: tanggal, keputusan, alasan. Yang masih terbuka ada di bagian bawah.
 - **2026-11-03 — Kartu produk hanya satu tombol keranjang yang berubah jadi `− n +`; di jumlah 1 tombol `−` menjadi 🗑.** *Alasan:* lebih jelas untuk pengguna, pembatalan langsung dari kartu.
 - **2026-11-03 — Pilihan 3 kolom disembunyikan di HP.** *Alasan:* terlalu sempit untuk tombol jumlah.
 - **2026-11-03 — Penyimpanan dipindah ke MongoDB dan dideploy di Vercel.** Dilakukan pemilik proyek di luar sesi ini. *Dampak:* server lokal butuh `MONGODB_URI`; lihat API-8.
+- **2026-11-03 — Batas unggah dokumen diturunkan dari 5MB ke 3MB.** *Alasan:* batas isi permintaan Vercel ±4,5MB; file 5MB menjadi ±6,7MB setelah base64 dan akan gagal di Vercel.
 - **2026-11-03 — Cara kerja memakai Spec-Driven Development** (lihat `README.md`).
 
 ## Terbuka (belum diputuskan)

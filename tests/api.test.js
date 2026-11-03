@@ -114,6 +114,14 @@ const rejected = async (fn) => { const r = await fn(); assert.strictEqual(r.stat
     assert.strictEqual(png.status, 200);
   });
 
+  await test("API-6b", "dokumen di atas 3MB ditolak (batas Vercel); 3MB ke bawah diterima", async () => {
+    const pdf = n => "data:application/pdf;base64," + Buffer.concat([Buffer.from("%PDF-1.4\n"), Buffer.alloc(n)]).toString("base64");
+    const big = await call("POST", "/api/doc", { dataUrl: pdf(3.1e6) });
+    assert.strictEqual(big.status, 400, `harus 400, dapat ${big.status}`);
+    const ok = await call("POST", "/api/doc", { dataUrl: pdf(2.9e6) });
+    assert.strictEqual(ok.status, 200, `harus 200, dapat ${ok.status}`);
+  });
+
   // ---------- API-7 pengaturan; rekening hanya dari kode
   await test("API-7", "rekening datang dari kode server dan tidak bisa diubah lewat API", async () => {
     const before = (await call("GET", "/api/settings")).body;

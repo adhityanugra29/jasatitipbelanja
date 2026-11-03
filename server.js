@@ -54,10 +54,10 @@ const handler = async (req, res) => {
 
     if (req.method === "GET" && url.startsWith("/api/doc/")) return getFile(res, "docs", path.basename(url));
     if (req.method === "POST" && url === "/api/doc") {
-      const m = /^data:(application\/pdf|image\/(?:jpeg|png|webp));base64,(.+)$/.exec((await body(req, 8e6)).dataUrl || "");
+      const m = /^data:(application\/pdf|image\/(?:jpeg|png|webp));base64,(.+)$/.exec((await body(req, 4.4e6)).dataUrl || "");
       if (!m) return send(res, 400, { error: "File harus PDF atau gambar JPG/PNG/WEBP" });
       const buf = Buffer.from(m[2], "base64");
-      if (buf.length > 5e6) return send(res, 400, { error: "File maksimal 5MB" });
+      if (buf.length > 3e6) return send(res, 400, { error: "File maksimal 3MB" }); // DEP-3: batas isi permintaan Vercel ±4,5MB
       if (m[1] === "application/pdf" && buf.subarray(0, 5).toString() !== "%PDF-") return send(res, 400, { error: "File PDF tidak valid" });
       const name = `${crypto.randomUUID()}.${m[1] === "application/pdf" ? "pdf" : m[1].slice(6).replace("jpeg", "jpg")}`;
       await putFile("docs", name, buf);

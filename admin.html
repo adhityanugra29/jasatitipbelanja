@@ -968,7 +968,7 @@ document.addEventListener("change", async e => {
   const k = e.target.dataset.docup; if (!k || !e.target.files[0]) return;
   const f = e.target.files[0];
   try {
-    if (f.size > 5e6 && f.type === "application/pdf") throw new Error("PDF maksimal 5MB");
+    if (f.size > 3e6 && f.type === "application/pdf") throw new Error("PDF maksimal 3MB");
     const dataUrl = f.type === "application/pdf" ? await fileToDataUrl(f) : await prepare(f, false);
     dd[k] = (await api("POST", "/api/doc", { dataUrl })).file;
     refreshDocs();

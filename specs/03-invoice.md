@@ -12,7 +12,7 @@ Pesanan masuk otomatis dari WhatsApp. Status DP/cicilan. Stok berkurang otomatis
 
 **Alur**
 - **INV-1** Alur: invoice dibuat (belum dibayar) → bukti bayar diunggah → otomatis masuk Pengiriman. Pengiriman sebelum pembayaran **tidak mungkin**, dijaga server. — ✅ `tests/api.test.js` (API-4c)
-- **INV-2** Bukti pembayaran (foto atau PDF, ≤5MB) wajib untuk menandai sudah bayar. Tanggal bayar = hari itu. **Batal bayar** hanya bila belum dikirim. Edit dan Hapus hanya untuk invoice belum dibayar. — ⬜ (aturan server ✅ API-4)
+- **INV-2** Bukti pembayaran (foto, atau PDF ≤3MB) wajib untuk menandai sudah bayar. Tanggal bayar = hari itu. **Batal bayar** hanya bila belum dikirim. Edit dan Hapus hanya untuk invoice belum dibayar. — ⬜ (aturan server ✅ API-4)
 
 **Data**
 - **INV-3** Invoice berisi: nomor otomatis `INV-YYYYMMNNNN` (boleh diubah), nama penerima, nomor HP (08…), alamat, kota, barang, ongkos kirim, tanggal buat. Nama, HP, alamat, dan minimal satu barang wajib. — ✅ aturan di server (API-3, API-4); formulir ⬜
