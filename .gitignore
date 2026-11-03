@@ -1,0 +1,11 @@
+node_modules
+.vercel
+.env*
+
+# Data pelanggan & berkas unggahan: jangan masuk git (disalin ke MongoDB lewat seed.js)
+data.json
+orders.json
+settings.json
+uploads
+docs
+*.log

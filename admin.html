@@ -1,0 +1,979 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#D32F82">
+<title>Admin Toko</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@500;700&family=Nunito:wght@400;600;700&display=swap">
+<style>
+  :root { --pink:#F44D92; --pink-d:#D32F82; --pink-soft:#FFE3EF; --teal:#0BBDB6; --teal-d:#078A85; --teal-soft:#D9F4F2; --ink:#0E3B43; --bg:#FFF8FB; --line:#F3D5E3; --side:#0E3B43; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  button, label, a, summary { touch-action:manipulation; }
+  body { margin:0; font:17px/1.4 Nunito,system-ui,sans-serif; color:var(--ink); background:var(--bg); }
+  h1, h2 { font-family:"Josefin Sans",Nunito,sans-serif; }
+  [hidden] { display:none !important; }
+
+  /* login */
+  #login { max-width:380px; margin:12vh auto; padding:0 16px; text-align:center; }
+  #login img { height:110px; }
+
+  /* sidebar */
+  #side { position:fixed; inset:0 auto 0 0; width:260px; background:var(--side); color:#D9EEF0; padding:20px 14px; display:flex; flex-direction:column; overflow-y:auto; z-index:20; transition:transform .2s; }
+  #side .logo { display:block; width:150px; margin:0 auto 18px; }
+  .grp { font-size:.7rem; letter-spacing:.18em; font-weight:700; color:#8FB5B9; margin:18px 12px 8px; }
+  .nav { display:flex; align-items:center; gap:14px; width:100%; padding:11px 12px; margin-bottom:4px; border:1px solid transparent; border-radius:10px; background:none; color:inherit; font:inherit; font-weight:500; text-decoration:none; cursor:pointer; text-align:left; }
+  .nav:hover { background:#ffffff12; }
+  .nav.on { background:#F44D9238; border-color:var(--pink); color:#fff; font-weight:700; }
+  .nav svg { width:20px; height:20px; flex:none; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .nav .tag { margin-left:auto; min-width:24px; padding:1px 7px; border-radius:4px; background:var(--teal); color:var(--ink); font-size:.8rem; font-weight:700; text-align:center; }
+  .nav .tag.out { background:none; border:1px solid #8FB5B9; color:#D9EEF0; font-weight:500; }
+  #side .gap { flex:1; }
+
+  /* konten */
+  #main { margin-left:260px; padding:24px 24px 110px; max-width:980px; }
+  #topbar { display:none; }
+  .box { background:#fff; border:2px solid var(--ink); border-radius:14px; padding:14px; margin-bottom:12px; }
+  .pagehead { flex-wrap:wrap; display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+  .pagehead h2 { margin:0; font-size:1.5rem; }
+  input { width:100%; padding:10px; font:inherit; color:var(--ink); border:2px solid var(--ink); border-radius:8px; margin:4px 0 8px; background:#fff; }
+  label { font-size:.85rem; }
+  .top { display:flex; gap:12px; align-items:center; }
+  .top img, .ph { width:80px; height:80px; flex:none; object-fit:cover; border-radius:8px; background:var(--pink-soft); display:grid; place-items:center; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  button.b { padding:12px 16px; font:inherit; border:0; border-radius:10px; background:var(--teal-soft); color:var(--ink); font-weight:700; cursor:pointer; }
+  button.b.dark { background:var(--pink-d); color:#fff; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px; }
+  .pc { background:#fff; border:1.5px solid #F3D5E3; border-radius:12px; padding:12px; display:flex; flex-direction:column; box-shadow:0 4px 14px #0E3B4314; }
+  .pc img, .pc .ph { width:100%; height:auto; aspect-ratio:1; border-radius:8px; margin-bottom:8px; font-size:2.5rem; object-fit:cover; }
+  .bdg { align-self:flex-start; margin:4px 0; }
+  .bdg.new { background:var(--teal-soft); color:var(--teal-d); }
+  .bdg.hot { background:#FDE1DD; color:#B3261E; }
+  .bdg.flash { background:#FFF1B8; color:#7A5B00; }
+  .pc h3 { margin:0; font-size:1rem; font-family:"Josefin Sans",Nunito,sans-serif; }
+  .pc .sub { font-size:.85rem; opacity:.75; }
+  .pc .price { font-weight:700; margin:4px 0; }
+  .pc .st { font-size:.85rem; font-weight:700; }
+  .pc .st.out { color:#c00; }
+  .pc .acts { display:flex; gap:8px; margin-top:auto; padding-top:10px; }
+  .pc .acts .b { flex:1; padding:10px; }
+  dialog { width:min(520px,94vw); border:0; border-radius:16px; padding:16px; background:var(--bg); color:var(--ink); font-family:inherit; max-height:92vh; }
+  dialog::backdrop { background:#0E3B4399; }
+  dialog h2 { margin-top:0; }
+  button.del { background:#fff; color:#c00; border:1px solid #c00; }
+  #msg { padding:8px 0; font-weight:700; }
+
+  .steps { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .pill { padding:8px 14px; border-radius:99px; background:#F3D5E3; font-weight:700; font-size:.9rem; }
+  .pill.on { background:var(--pink-d); color:#fff; }
+  .warn { background:#FFF3C4; border:1px solid #F7D154; border-radius:10px; padding:12px; margin-bottom:14px; }
+  .drop { display:block; text-align:center; border:2px dashed #F0A9C7; border-radius:14px; padding:36px 16px; background:#fff; cursor:pointer; margin-bottom:16px; }
+  .drop.over { background:#F44D9222; border-color:var(--pink-d); }
+  .drop small { display:block; opacity:.75; }
+  .thumbs { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; }
+  .thumb { position:relative; background:#fff; border:1.5px solid #F3D5E3; border-radius:12px; padding:8px; }
+  .thumb img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; }
+  .thumb .nm { font-size:.8rem; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin:6px 0; }
+  .thumb .x { position:absolute; top:12px; right:12px; width:28px; height:28px; border:0; border-radius:50%; background:#fff; cursor:pointer; }
+  .chip { font-size:.75rem; font-weight:700; padding:2px 10px; border-radius:99px; background:#F3D5E3; }
+  .chip.ok { background:#d6f0dc; color:#1c6b32; }
+  .chip.err { background:#fbd5d5; color:#a00; }
+  .wfoot { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:20px; flex-wrap:wrap; }
+  .wfoot .b:disabled { opacity:.4; cursor:not-allowed; }
+  .split { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.6fr); gap:14px; align-items:start; }
+  .big { width:100%; aspect-ratio:1; object-fit:contain; background:#fff; border-radius:8px; margin-bottom:8px; }
+  .wact { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .wact .linkbtn { margin-left:auto; }
+  .linkbtn { background:none; border:0; color:#c00; font:inherit; font-weight:700; cursor:pointer; }
+  .strip { display:flex; gap:10px; overflow-x:auto; padding:12px; background:#fff; border:1.5px solid #F3D5E3; border-radius:12px; margin-top:14px; }
+  .sth { position:relative; flex:none; width:64px; height:64px; padding:0; border:2px solid transparent; border-radius:8px; background:none; cursor:pointer; }
+  .sth.cur { border-color:var(--pink-d); }
+  .sth img { width:100%; height:100%; object-fit:cover; border-radius:6px; }
+  .sth i { position:absolute; top:-4px; right:-4px; width:14px; height:14px; border-radius:50%; background:#F7D154; }
+  @media (max-width:800px) { .split { grid-template-columns:1fr; } }
+  select { width:100%; padding:10px; font:inherit; color:var(--ink); border:2px solid var(--ink); border-radius:8px; margin:4px 0 8px; background:#fff; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:14px; margin-bottom:18px; }
+  .stat { background:#fff; border-radius:14px; padding:16px 18px; box-shadow:0 4px 14px #0E3B4314; }
+  .stat small { display:block; font-size:.72rem; letter-spacing:.06em; opacity:.7; margin-bottom:6px; }
+  .stat b { font-size:2rem; font-family:"Josefin Sans",Nunito,sans-serif; }
+  .otabs { overflow-x:auto; white-space:nowrap; display:flex; gap:24px; border-bottom:1px solid #F3D5E3; margin-bottom:14px; }
+  .otabs button { background:none; border:0; border-bottom:3px solid transparent; padding:10px 2px; font:inherit; font-weight:700; color:#5E8388; cursor:pointer; }
+  .otabs button.on { color:var(--ink); border-color:var(--pink); }
+  .otabs span { background:#FDEBF3; border-radius:99px; padding:1px 8px; font-size:.8rem; margin-left:4px; }
+  .ofil { display:grid; grid-template-columns:1fr auto auto auto; gap:10px; margin-bottom:14px; }
+  .ofil input, .ofil select { margin:0; }
+  .otable { background:#fff; border-radius:14px; overflow-x:auto; box-shadow:0 4px 14px #0E3B4314; }
+  .otable table { width:100%; border-collapse:collapse; min-width:860px; }
+  .otable th { font-size:.7rem; letter-spacing:.12em; text-align:left; padding:14px 12px; background:#FDEBF3; }
+  .otable td { padding:12px; border-top:1px solid #FDEBF3; vertical-align:middle; font-size:.95rem; }
+  .otable small, .mut { opacity:.65; }
+  .ost { font-weight:700; }
+  .ost.late { color:#c00; }
+  .ost.today { color:#8a5a00; }
+  .ost.done { color:#1c6b32; }
+  .pay { font-size:.7rem; font-weight:700; padding:2px 8px; border:1px solid; border-radius:4px; white-space:nowrap; }
+  .pay.lunas { color:#0a7a5a; border-color:#0a7a5a; background:#e3f6ef; }
+  .pay.dp { color:#2a6aa0; border-color:#2a6aa0; background:#e6f0fa; }
+  .pay.belum { color:#c00; border-color:#c00; background:#fdeaea; }
+  .docbox { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:4px 0 10px; }
+  .docbox input { margin:0; flex:1 1 200px; }
+  .linkbtn2 { background:none; border:0; color:var(--ink); font:inherit; font-weight:700; text-decoration:underline; cursor:pointer; }
+  .otable a { color:var(--ink); font-weight:700; }
+  .oact { display:flex; gap:6px; align-items:center; justify-content:flex-end; }
+  .oact .b { padding:9px 12px; font-size:.9rem; white-space:nowrap; }
+  .oact .sm { background:#fff; border:1.5px solid var(--ink); color:var(--ink); }
+  .dots { width:40px; height:40px; flex:none; border:1.5px solid var(--line); border-radius:10px; background:#fff; color:var(--ink); font-size:1.3rem; line-height:1; cursor:pointer; }
+  .dots:hover { background:var(--pink-soft); }
+  #pop { position:fixed; z-index:60; min-width:220px; background:#fff; border:1.5px solid var(--line); border-radius:12px; box-shadow:0 10px 30px #0E3B4326; padding:6px; }
+  #pop button { display:block; width:100%; text-align:left; padding:11px 12px; border:0; border-radius:8px; background:none; font:inherit; color:var(--ink); cursor:pointer; }
+  #pop button:hover { background:var(--pink-soft); }
+  #pop .danger { color:#c00; margin-top:4px; border-top:1px solid var(--line); border-radius:0 0 8px 8px; }
+  #ldlg { width:min(420px,94vw); }
+  .lbl { border:2px solid #000; border-radius:6px; padding:12px; color:#000; background:#fff; }
+  .lbl .lh { display:flex; align-items:center; gap:10px; border-bottom:2px solid #000; padding-bottom:8px; margin-bottom:4px; }
+  .lbl .lh img { height:48px; }
+  .lbl small { display:block; font-size:.65rem; letter-spacing:.14em; font-weight:700; }
+  .lbl .ls { padding:8px 0; border-bottom:1px dashed #000; }
+  .lbl .ls:last-child { border-bottom:0; }
+  .lbl .ln { font-size:1.35rem; font-weight:800; line-height:1.2; }
+  .lbl .lp { font-size:1.1rem; font-weight:700; letter-spacing:.06em; }
+  .lbl .la { font-size:1.05rem; white-space:pre-line; }
+  .lbl table { width:100%; border-collapse:collapse; }
+  .lbl td { padding:3px 0; }
+  .lbl td:last-child { text-align:right; font-weight:800; white-space:nowrap; padding-left:12px; }
+  .lbl .lt td { border-top:1px solid #000; font-weight:800; }
+  @page label { size:100mm 150mm; margin:4mm; } /* label termal 10x15 cm */
+  @page inv { size:A4; margin:12mm; }
+  .lbl { page:label; }
+  @media print {
+    body > *:not(dialog.prn[open]) { display:none !important; }
+    dialog.prn[open] { position:static; display:block; width:auto; max-height:none; border:0; padding:0; background:#fff; }
+    dialog.prn::backdrop { display:none; }
+    dialog.prn .noprint { display:none; }
+  }
+  /* editor barang di form invoice */
+  #idlg { width:min(820px,96vw); }
+  .ln { display:grid; grid-template-columns:2fr 1.5fr .6fr 1fr 1fr auto; gap:6px; align-items:center; margin-bottom:6px; }
+  .ln input { margin:0; min-width:0; }
+  .lnh { display:grid; grid-template-columns:2fr 1.5fr .6fr 1fr 1fr 40px; gap:6px; font-size:.75rem; font-weight:700; margin-top:6px; }
+  .isum { margin:12px 0 0 auto; width:min(320px,100%); }
+  .isum div { display:flex; justify-content:space-between; padding:4px 0; }
+  .isum .g { border-top:2px solid var(--ink); margin-top:4px; padding-top:8px; font-size:1.1rem; }
+  @media (max-width:700px) { .ln { grid-template-columns:1fr 1fr; } .ln input:first-child, .ln input:nth-child(2) { grid-column:1/-1; } .lnh { display:none; } }
+  /* tampilan invoice */
+  #vdlg { width:min(820px,96vw); }
+  #invoice { background:#fff; color:#111; padding:28px 32px; font-size:14px; page:inv; }
+  #invoice .vt { text-align:center; font-size:1.8rem; letter-spacing:.04em; margin:0 0 18px; }
+  #invoice .vhead { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
+  #invoice .vstore { display:flex; gap:12px; align-items:flex-start; }
+  #invoice .vstore img { height:64px; }
+  #invoice .vsub { font-size:.85rem; color:#555; line-height:1.5; }
+  #invoice .vsub b { color:#111; font-size:1rem; }
+  #invoice .vmeta { text-align:right; font-size:.85rem; color:#555; line-height:1.6; }
+  #invoice .ok { color:#0a7a5a; }
+  #invoice .no { color:#c00; }
+  #invoice .vline { border:0; border-top:2px solid #111; margin:16px 0; }
+  #invoice .vcols { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  #invoice small { display:block; font-size:.68rem; letter-spacing:.08em; color:#777; margin-bottom:4px; }
+  #invoice .vbig { font-size:1.1rem; font-weight:700; }
+  #invoice table { width:100%; border-collapse:collapse; margin-top:18px; }
+  #invoice th { font-size:.68rem; letter-spacing:.08em; color:#777; text-align:right; padding:8px 4px; border-bottom:1px solid #111; }
+  #invoice td { padding:10px 4px; text-align:right; border-bottom:1px solid #ddd; }
+  #invoice th:first-child, #invoice td:first-child { text-align:left; }
+  #invoice .vnote { color:#777; font-size:.8rem; }
+  #invoice .vtot { margin:12px 0 0 auto; width:min(320px,100%); }
+  #invoice .vtot div { display:flex; justify-content:space-between; padding:6px 0; }
+  #invoice .vtot .g { border-top:2px solid #111; margin-top:6px; padding-top:10px; font-size:1.15rem; font-weight:800; }
+  #invoice .vfoot { display:flex; justify-content:space-between; gap:16px; align-items:flex-end; }
+  #invoice .vfoot img { height:56px; }
+  #invoice .vthx { text-align:right; font-style:italic; color:#666; font-size:.85rem; }
+  @media (max-width:700px) { #invoice { padding:16px; } #invoice .vcols { grid-template-columns:1fr; } #invoice .vhead { flex-direction:column; } #invoice .vmeta { text-align:left; } }
+  .items { white-space:pre-line; font-size:.92rem; min-width:170px; max-width:300px; }
+  textarea { width:100%; padding:10px; font:inherit; color:var(--ink); border:2px solid var(--ink); border-radius:8px; margin:4px 0 8px; background:#fff; resize:vertical; }
+  .otable table { min-width:940px; }
+  .otable td { padding:14px 12px; }
+  .otable tbody tr:hover { background:var(--bg); }
+  .pgr, #pager { text-align:center; margin-top:16px; font-weight:700; opacity:.6; }
+  @media (max-width:800px) { .stats { grid-template-columns:1fr 1fr; } .ofil { grid-template-columns:1fr; } }
+  @media (max-width:800px) {
+    #side { transform:translateX(-100%); }
+    #side.open { transform:none; }
+    #main { margin-left:0; padding:12px 16px 110px; }
+    #topbar { display:flex; align-items:center; gap:12px; padding:10px 16px; background:var(--side); position:sticky; top:0; z-index:10; }
+    #topbar img { height:40px; }
+    #topbar button { background:none; border:0; color:var(--pink); font-size:1.8rem; cursor:pointer; }
+  }
+  #scrim { display:none; }
+  /* layar HP: tabel menjadi kartu, jendela muncul dari bawah */
+  @media (max-width:800px) {
+    #side.open + #scrim { display:block; position:fixed; inset:0; z-index:15; background:#0E3B4380; }
+    .otable { background:none; box-shadow:none; overflow:visible; }
+    .otable table, .otable tbody, .otable tr, .otable td { display:block; width:100%; min-width:0; }
+    .otable thead { display:none; }
+    .otable tr { background:#fff; border:1.5px solid var(--line); border-radius:14px; padding:10px 14px; margin-bottom:12px; box-shadow:0 4px 14px #0E3B4314; }
+    .otable td { display:block; border:0; padding:6px 0; text-align:left; }
+    .otable td::before { content:attr(data-label); display:block; margin-bottom:2px; font-size:.7rem; font-weight:700; letter-spacing:.1em; color:#5E8388; }
+    .stat { padding:12px 14px; }
+    .stat b { font-size:1.6rem; }
+    .otable td[data-label=""]::before { display:none; }
+    .items { min-width:0; max-width:none; }
+    .oact { width:100%; padding-top:6px; }
+    .oact .b.dark { flex:1; }
+    dialog, #idlg, #vdlg, #ldlg { width:100% !important; max-width:100%; margin:auto 0 0; max-height:92vh; overflow:auto; border-radius:18px 18px 0 0; padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
+  }
+</style>
+</head>
+<body>
+<div id="login">
+  <img src="/assets/logo.png" alt="Jasa Titip Belanja">
+  <h1>Admin Toko</h1>
+  <div class="box" style="text-align:left">
+    <label>Password admin</label>
+    <input type="password" id="pw">
+    <button class="b dark" id="go" style="width:100%">Masuk</button>
+    <div id="err" style="color:#c00;margin-top:8px"></div>
+  </div>
+</div>
+
+<div id="app" hidden>
+  <div id="topbar"><button id="menu" aria-label="Menu">☰</button><img src="/assets/logo.png" alt=""></div>
+
+  <aside id="side">
+    <img class="logo" src="/assets/logo.png" alt="Jasa Titip Belanja">
+    <div class="grp">JUALAN</div>
+    <button class="nav on" data-view="katalog">
+      <svg viewBox="0 0 24 24"><path d="M3 9l1.5-5h15L21 9M3 9h18M3 9v11h18V9M9 20v-6h6v6"/></svg>Katalog <span class="tag" id="tcount"></span></button>
+    <button class="nav" data-view="invoice">
+      <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg>Invoice <span class="tag" id="icount"></span></button>
+    <button class="nav" data-view="pengiriman">
+      <svg viewBox="0 0 24 24"><path d="M2 6h12v10H2zM14 9h4l3 3v4h-7M6 19.5a1.5 1.5 0 1 0 0-.01M17 19.5a1.5 1.5 0 1 0 0-.01"/></svg>Pengiriman <span class="tag" id="ocount"></span></button>
+    <div class="grp">TOKO</div>
+    <button class="nav" data-view="pengaturan">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4.4l-.4 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.7h4.4l.4-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg>Pengaturan</button>
+    <a class="nav" href="/" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"/></svg>Lihat Toko</a>
+    <div class="gap"></div>
+    <button class="nav" id="logout">
+      <svg viewBox="0 0 24 24"><path d="M9 4H4v16h5M16 8l4 4-4 4M20 12H9"/></svg>Keluar</button>
+  </aside>
+  <div id="scrim"></div>
+
+  <main id="main">
+    <section id="v-katalog">
+      <div class="pagehead"><h2>Katalog</h2><button class="b dark" id="add">+ Tambah Barang</button></div>
+      <div id="list"></div>
+      <nav id="pager" hidden></nav>
+    </section>
+    <section id="v-bulk" hidden>
+      <div class="pagehead"><div><h2>Tambah Produk</h2><small>Unggah satu atau banyak foto sekaligus, lalu isi data tiap produk satu per satu</small></div><button class="b" id="wback">← Katalog</button></div>
+      <div class="steps" id="steps"></div>
+      <div id="wz"></div>
+    </section>
+    <section id="v-invoice" hidden>
+      <div class="pagehead"><h2>Invoice</h2><button class="b dark" id="iadd">+ Buat Invoice</button></div>
+      <div class="warn">Invoice yang sudah dibayar <b>otomatis masuk ke Pengiriman</b>. Pesanan belum bisa dikirim sebelum bukti pembayaran diunggah.</div>
+      <div class="stats" id="iv-stats"></div>
+      <div class="otabs" id="iv-tabs"></div>
+      <div class="ofil"><input id="iv-q" placeholder="Cari pelanggan, no. invoice, kota"><select id="iv-m"></select></div>
+      <div class="otable" id="iv-table"></div>
+      <nav id="iv-pager" class="pgr" hidden></nav>
+    </section>
+    <section id="v-pengiriman" hidden>
+      <div class="pagehead"><h2>Pengiriman</h2></div>
+      <div class="stats" id="ostats"></div>
+      <div class="otabs" id="otabs"></div>
+      <div class="ofil">
+        <input id="oq" placeholder="Cari pelanggan, no. invoice, kota, resi">
+        <select id="om"></select><select id="ok"></select>
+      </div>
+      <div class="otable" id="otable"></div>
+      <nav id="opager" class="pgr" hidden></nav>
+    </section>
+    <section id="v-pengaturan" hidden>
+      <div class="pagehead"><h2>Pengaturan Toko</h2></div>
+      <div class="otabs" id="stabs">
+        <button class="on" data-stab="toko">Toko</button>
+        <button data-stab="invoice">Invoice</button>
+      </div>
+      <div class="box" data-sp="toko">
+        <label>Nomor WhatsApp toko (contoh 6281234567890)</label><input id="wa" inputmode="numeric">
+        <label>Pengumuman di atas katalog (kosongkan jika tidak perlu)</label><input id="notice" placeholder="Contoh: Open order sampai Jumat, barang tiba minggu depan">
+      </div>
+      <div class="box" data-sp="invoice" hidden>
+        <small>Identitas toko yang tampil di kepala setiap invoice. Kosongkan yang tidak perlu.</small>
+        <label>Nama toko</label><input id="cfg-storeName">
+        <label>Alamat toko</label><input id="cfg-address">
+        <div class="two"><div><label>Telepon / WhatsApp</label><input id="cfg-phone"></div><div><label>Email</label><input id="cfg-email"></div></div>
+        <label>NPWP (opsional)</label><input id="cfg-npwp">
+        <label>Nama admin</label><input id="cfg-admin">
+      </div>
+      <button class="b dark" id="save">💾 Simpan Pengaturan</button>
+    </section>
+    <div id="msg"></div>
+  </main>
+</div>
+<datalist id="cats"></datalist>
+<div id="pop" hidden></div>
+<dialog id="ldlg" class="prn">
+  <div id="label" class="lbl"></div>
+  <div class="wact noprint" style="margin-top:12px"><button class="b dark" id="lprint">🖨️ Cetak Label</button><button class="b" id="lclose">Tutup</button></div>
+</dialog>
+<datalist id="couriers"><option value="Kurir Internal"><option value="Diambil Sendiri oleh Pelanggan"><option value="JNE"><option value="J&amp;T"><option value="SiCepat"><option value="GoSend"><option value="Grab Express"></datalist>
+<dialog id="idlg">
+  <h2 id="ititle">Buat Invoice</h2>
+  <label>Pelanggan (nama penerima)</label><input id="i-customer">
+  <label>Nomor HP penerima</label><input id="i-phone" inputmode="tel" placeholder="08123456789">
+  <label>Alamat lengkap</label><textarea id="i-address" rows="3" placeholder="Jalan, nomor rumah, RT/RW, kecamatan, kode pos"></textarea>
+  <div class="two"><div><label>Kota</label><input id="i-city"></div><div><label>No. invoice</label><input id="i-invoice"></div></div>
+  <h3 style="margin:14px 0 0">Isi barang</h3>
+  <div class="lnh"><span>PRODUK</span><span>KETERANGAN (opsional)</span><span>QTY</span><span>HARGA (Rp)</span><span>DISKON (Rp)</span><span></span></div>
+  <div id="i-lines"></div>
+  <button type="button" class="b" id="iaddline">+ Tambah barang</button>
+  <label style="display:block;margin-top:12px">Ongkos kirim (Rp)</label><input id="i-shipping" type="number" min="0" inputmode="numeric">
+  <div class="isum" id="i-sum"></div>
+  <div id="ierr" style="color:#c00;margin:8px 0"></div>
+  <div class="wact"><button class="b dark" id="isave">Simpan</button><button class="b" id="icancel">Batal</button></div>
+</dialog>
+<dialog id="vdlg" class="prn">
+  <div id="invoice"></div>
+  <div class="wact noprint" style="margin-top:12px"><button class="b dark" id="vprint">🖨️ Cetak / Simpan PDF</button><button class="b" id="vclose">Tutup</button></div>
+</dialog>
+<dialog id="pdlg">
+  <h2>Tandai Sudah Bayar</h2>
+  <p id="pinfo" style="margin-top:0;white-space:pre-line"></p>
+  <label>Bukti pembayaran (foto atau PDF)</label><div class="docbox" data-kind="proof"></div>
+  <div id="perr" style="color:#c00;margin-bottom:8px"></div>
+  <p><small>Setelah dikonfirmasi, pesanan ini otomatis masuk ke Pengiriman.</small></p>
+  <div class="wact"><button class="b dark" id="psave">Konfirmasi Pembayaran</button><button class="b" id="pcancel">Batal</button></div>
+</dialog>
+<dialog id="sdlg">
+  <h2>Pengiriman</h2>
+  <p id="sinfo" style="margin-top:0;white-space:pre-line"></p>
+  <label>Kurir (ditentukan admin)</label><input id="s-courier" list="couriers">
+  <label>Nomor resi</label><input id="s-resi">
+  <label>Jadwal kirim</label><input id="s-shipDate" type="date">
+  <div id="serr" style="color:#c00;margin-bottom:8px"></div>
+  <div class="wact"><button class="b dark" id="ssend">Konfirmasi Kirim</button><button class="b" id="sset">Simpan Jadwal</button><button class="linkbtn2" id="scancel" style="margin-left:auto">Batal</button></div>
+</dialog>
+<dialog id="edlg"><h2>Edit Barang</h2><div id="ed"></div><div id="eerr" style="color:#c00;margin-bottom:8px"></div>
+  <div class="wact"><button class="b dark" id="edone">Simpan</button><button class="b" id="ecancel">Batal</button></div></dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+const PER = 12; // barang yang dimuat setiap kali menggulir ke bawah
+let page = 1, pw = "", data = { wa: "", notice: "", products: [] };
+
+async function api(method, url, body) {
+  const r = await fetch(url, { method, headers: { "x-admin": pw, "content-type": "application/json" }, body: body && JSON.stringify(body) });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || "Gagal");
+  return j;
+}
+
+function render() {
+  $("wa").value = data.wa; $("notice").value = data.notice || "";
+  $("tcount").textContent = data.products.length;
+  $("cats").innerHTML = [...new Set(data.products.map(p => p.cat).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join("");
+  const pages = Math.max(1, Math.ceil(data.products.length / PER));
+  page = Math.min(page, pages);
+  $("pager").hidden = page >= pages; $("pager").textContent = "Memuat barang lainnya…";
+  requestAnimationFrame(autoMore);
+  $("list").innerHTML = `<div class="cards">` + data.products.slice(0, page * PER).map((p, i) => { return `
+    <div class="pc">
+      ${p.img ? `<img src="${esc(p.img)}" alt="">` : `<div class="ph">🛍️</div>`}
+      <h3>${esc(p.name || "(tanpa nama)")}</h3>${p.badge ? `<span class="chip bdg ${p.badge}">${BADGE_LABEL[p.badge]}</span>` : ""}
+      <div class="sub">${esc(p.desc || p.cat)}</div>
+      <div class="price">Rp${(p.price || 0).toLocaleString("id-ID")}</div>
+      <div class="st ${p.stock === 0 ? "out" : ""}">${p.stock == null ? "Stok tidak terbatas" : p.stock > 0 ? "Sisa " + p.stock : "Stok habis"}</div>
+      <div class="acts"><button class="b" data-edit="${i}">Edit</button><button class="b del" data-del="${i}">Hapus</button></div>
+    </div>`; }).join("") + `</div>`;
+  if (!data.products.length) $("list").innerHTML = "<p>Belum ada barang. Klik “+ Tambah Barang”.</p>";
+}
+
+function renderForm(i) {
+  const p = data.products[i];
+  $("ed").innerHTML = `
+    <div class="top">
+      ${p.img ? `<img src="${esc(p.img)}">` : `<div class="ph">📷</div>`}
+      <div><label>Foto</label><input type="file" accept="image/*" data-i="${i}" data-f="img"></div>
+    </div>
+    <label>Nama barang</label><input value="${esc(p.name)}" data-i="${i}" data-f="name">
+    <label>Keterangan singkat (opsional)</label><input value="${esc(p.desc)}" data-i="${i}" data-f="desc">
+    <div class="two">
+      <div><label>Harga (Rp)</label><input type="number" inputmode="numeric" value="${p.price}" data-i="${i}" data-f="price"></div>
+      <div><label>Kategori</label><input list="cats" value="${esc(p.cat)}" data-i="${i}" data-f="cat"></div>
+    </div>
+    <label>Stok (kosongkan = tidak terbatas)</label><input type="number" inputmode="numeric" min="0" value="${p.stock ?? ""}" data-i="${i}" data-f="stock">
+    <label>Label di katalog</label><select data-i="${i}" data-f="badge">${badgeOpts(p.badge)}</select>`;
+}
+
+// logo toko sebagai watermark (PNG bulat transparan)
+let mark;
+const loadImg = src => new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error("File bukan gambar")); i.src = src; });
+const logoMark = () => (mark ||= loadImg("/assets/logo.png"));
+
+// perkecil foto di browser agar upload ringan, lalu tempel watermark; hasilnya yang diunggah (asli tetap di perangkat Anda)
+async function prepare(file, wm = true) { // wm=false: tanpa watermark (bukti bayar)
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await loadImg(url), m = wm && await logoMark();
+    const s = Math.min(1, (wm ? 800 : 1600) / Math.max(img.width, img.height)), c = document.createElement("canvas");
+    c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+    const x = c.getContext("2d");
+    x.drawImage(img, 0, 0, c.width, c.height);
+    if (wm) {
+      const w = c.width * 0.2, h = w * m.height / m.width, pad = c.width * 0.03;
+      x.globalAlpha = 0.9; x.shadowColor = "rgba(14,59,67,.85)"; x.shadowBlur = c.width * 0.012;
+      x.drawImage(m, c.width - w - pad, c.height - h - pad, w, h);
+    }
+    return c.toDataURL("image/jpeg", 0.85);
+  } finally { URL.revokeObjectURL(url); }
+}
+
+const say = (t, bad) => { $("msg").textContent = t; $("msg").style.color = bad ? "#c00" : "#080"; };
+const grab = () => { data.wa = $("wa").value; data.notice = $("notice").value; };
+
+$("go").onclick = async () => {
+  pw = $("pw").value;
+  try {
+    await api("GET", "/api/check");
+    data = await (await fetch("/api/data")).json();
+    orders = await api("GET", "/api/orders"); settings = await api("GET", "/api/settings"); fillCfg(); renderAll();
+    $("login").hidden = true; $("app").hidden = false; render();
+  } catch (e) { $("err").textContent = e.message; }
+};
+$("pw").onkeydown = e => { if (e.key === "Enter") $("go").click(); };
+$("logout").onclick = () => location.reload();
+$("menu").onclick = () => $("side").classList.toggle("open");
+$("scrim").onclick = () => $("side").classList.remove("open"); // ketuk area gelap = tutup menu
+
+// "bulk" = halaman Tambah Produk; menu Katalog tetap menyala saat di sana
+function showView(v) {
+  for (const x of ["katalog", "bulk", "invoice", "pengiriman", "pengaturan"]) $("v-" + x).hidden = x !== v;
+  document.querySelectorAll("[data-view]").forEach(x => x.classList.toggle("on", x.dataset.view === (v === "bulk" ? "katalog" : v)));
+  $("side").classList.remove("open"); say("");
+  if (v === "bulk") wz();
+  if (v === "invoice" || v === "pengiriman") renderAll();
+}
+document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => showView(b.dataset.view));
+$("wback").onclick = () => showView("katalog");
+
+$("add").onclick = () => {
+  if (W.step === 3) Object.assign(W, { step: 1, items: [], i: 0, added: 0 }); // proses sebelumnya sudah selesai
+  showView("bulk");
+};
+// Katalog langsung tersimpan setiap kali barang diedit atau dihapus (tidak ada tombol simpan terpisah)
+async function saveCatalog(msg) {
+  try { await api("PUT", "/api/data", data); say(msg); return true; }
+  catch (err) { say(err.message, true); $("eerr").textContent = err.message; return false; }
+}
+let editing = -1, editBackup = null;
+const cancelEdit = () => { data.products[editing] = editBackup; $("edlg").close(); render(); }; // batal = buang perubahan
+$("edone").onclick = async () => {
+  if (!data.products[editing].name.trim()) return void ($("eerr").textContent = "Nama barang wajib diisi.");
+  if (await saveCatalog("✅ Barang tersimpan.")) { $("edlg").close(); render(); }
+};
+$("ecancel").onclick = cancelEdit;
+$("edlg").addEventListener("cancel", e => { e.preventDefault(); cancelEdit(); }); // tombol Esc
+
+document.addEventListener("click", async e => {
+  if (e.target.dataset.edit !== undefined) {
+    editing = +e.target.dataset.edit; editBackup = { ...data.products[editing] };
+    $("eerr").textContent = ""; renderForm(editing); $("edlg").showModal(); return;
+  }
+  if (e.target.dataset.del === undefined) return;
+  if (!confirm("Hapus barang ini?")) return;
+  data.products.splice(e.target.dataset.del, 1); render(); await saveCatalog("✅ Barang dihapus.");
+});
+
+document.addEventListener("change", async e => {
+  const t = e.target, p = data.products[t.dataset.i];
+  if (!p) return;
+  if (t.dataset.f !== "img") { p[t.dataset.f] = t.type === "number" ? (t.value === "" ? null : Number(t.value)) : t.value; return; }
+  try {
+    say("Mengunggah foto…");
+    p.img = (await api("POST", "/api/upload", { dataUrl: await prepare(t.files[0]) })).img;
+    say("Foto terunggah."); renderForm(t.dataset.i);
+  } catch (err) { say(err.message, true); }
+});
+
+$("stabs").onclick = e => {
+  const b = e.target.closest("button"); if (!b) return;
+  document.querySelectorAll("#stabs button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll("[data-sp]").forEach(p => { p.hidden = p.dataset.sp !== b.dataset.stab; });
+};
+// data toko untuk invoice: privat (bukan bagian dari katalog publik)
+const CFG = ["storeName", "address", "phone", "email", "npwp", "admin"];
+let settings = {};
+const fillCfg = () => CFG.forEach(k => { $("cfg-" + k).value = settings[k] || ""; });
+$("save").onclick = async () => { // hanya di halaman Pengaturan
+  grab(); settings = { ...settings, ...Object.fromEntries(CFG.map(k => [k, $("cfg-" + k).value.trim()])) }; // rekening tetap dari server
+  try { await api("PUT", "/api/settings", settings); } catch (err) { return say(err.message, true); }
+  await saveCatalog("✅ Pengaturan tersimpan.");
+};
+
+// ===== tambah banyak produk: 1 pilih foto, 2 isi data, 3 selesai =====
+const W = { step: 1, items: [], i: 0, cat: "", added: 0, busy: false };
+const OK_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const baseName = f => f.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+const STATUS = { up: "Mengunggah…", ok: "Siap", err: "Gagal" };
+
+function wz() {
+  $("steps").innerHTML = ["Pilih foto", "Isi data", "Selesai"].map((t, n) => `<span class="pill ${W.step === n + 1 ? "on" : ""}">${n + 1} · ${t}</span>`).join("");
+  [0, wz1, wz2, wz3][W.step]();
+}
+
+function wz1() {
+  const ok = W.items.filter(x => x.status === "ok").length, busy = W.items.some(x => x.status === "up");
+  $("wz").innerHTML = `
+    <div class="warn"><b>1 foto = 1 produk.</b> Setiap foto yang diunggah wajib diisi datanya sampai tersimpan. Foto yang salah bisa dibuang dengan tombol ✕. Semua foto otomatis diberi watermark logo JTB.</div>
+    <label class="drop" id="drop"><input type="file" id="wfiles" accept="image/jpeg,image/png,image/webp" multiple hidden>
+      <div style="font-size:2rem">⇧</div><b>Klik atau seret banyak foto ke sini</b>
+      <small>Maks 30 foto · JPG/PNG/WEBP, 5MB per foto</small>
+      <small>Nama file dibaca otomatis: <b>Tas Kulit Cokelat.jpg</b> → nama produk</small></label>
+    ${W.items.length ? `<p><b>${W.items.length} foto</b> · ${ok} siap</p><div class="thumbs">${W.items.map((x, n) => `
+      <div class="thumb"><button class="x" data-w="rm" data-n="${n}" aria-label="Buang">✕</button><img src="${x.url}" alt="">
+        <div class="nm">${esc(x.file.name)}</div><span class="chip ${x.status}">${STATUS[x.status]}</span></div>`).join("")}</div>` : ""}
+    <div class="wfoot"><small>${ok} foto siap = ${ok} produk yang harus diisi. Kategori otomatis mengikuti produk sebelumnya.</small>
+      <button class="b dark" data-w="start" ${ok && !busy ? "" : "disabled"}>Mulai isi data — ${ok} foto →</button></div>`;
+}
+
+function wz2() {
+  const x = W.items[W.i], left = W.items.filter(y => y.status !== "saved").length;
+  $("wz").innerHTML = `
+    <div class="split">
+      <div class="box"><img class="big" src="${x.url}" alt=""><b>${esc(x.file.name)}</b><br><small>Foto ${W.i + 1} dari ${W.items.length} · ${left} belum disimpan</small></div>
+      <div class="box">
+        <label>Nama produk</label><input id="wn" value="${esc(baseName(x.file))}">
+        <div class="two">
+          <div><label>Kategori</label><input id="wc" list="cats" value="${esc(W.cat)}" placeholder="Pilih / ketik kategori"></div>
+          <div><label>Stok (kosong = tidak terbatas)</label><input id="ws" type="number" min="0" inputmode="numeric" value="1"></div>
+        </div>
+        <div class="two">
+          <div><label>Harga (Rp)</label><input id="wp" type="number" min="0" inputmode="numeric"></div>
+          <div><label>Keterangan singkat (opsional)</label><input id="wd"></div>
+        </div>
+        <label>Label di katalog (opsional)</label><select id="wb">${badgeOpts("")}</select>
+        <div id="werr" style="color:#c00;margin-bottom:8px"></div>
+        <div class="wact"><button class="b dark" data-w="save">Simpan &amp; berikutnya →</button><small>Ctrl+Enter</small><button class="linkbtn" data-w="drop">Buang foto ini</button></div>
+      </div>
+    </div>
+    <div class="strip">${W.items.map((y, n) => `<button class="sth ${n === W.i ? "cur" : ""}" data-w="go" data-n="${n}"><img src="${y.url}" alt="">${y.status === "saved" ? "<i></i>" : ""}</button>`).join("")}</div>`;
+  $("wn").focus();
+}
+
+function wz3() {
+  $("wz").innerHTML = `<div class="box" style="text-align:center;padding:32px">
+    <div style="font-size:2.5rem">🎉</div><h2>${W.added} produk ditambahkan</h2>
+    <p>Semua sudah tersimpan dan tampil di toko.</p>
+    <button class="b" data-w="again">Tambah lagi</button> <button class="b dark" data-w="katalog">Lihat Katalog</button></div>`;
+}
+
+// pindah ke foto yang belum disimpan; kalau tidak ada lagi, lanjut ke langkah berikut
+function settle() {
+  const n = W.items.findIndex((y, k) => y.status !== "saved" && k >= W.i), m = n >= 0 ? n : W.items.findIndex(y => y.status !== "saved");
+  if (m < 0) { W.step = W.added ? 3 : 1; return; }
+  W.i = m;
+}
+
+function dropItem(n) { URL.revokeObjectURL(W.items[n].url); W.items.splice(n, 1); }
+
+async function addFiles(list) {
+  for (const f of list) {
+    if (W.items.length >= 30) { say("Maksimal 30 foto.", true); break; }
+    if (!OK_TYPES.includes(f.type)) { say(`${f.name}: hanya JPG/PNG/WEBP.`, true); continue; }
+    if (f.size > 5e6) { say(`${f.name}: lebih dari 5MB.`, true); continue; }
+    W.items.push({ id: Date.now() + "-" + Math.random().toString(36).slice(2, 6), file: f, url: URL.createObjectURL(f), status: "up", img: "" });
+  }
+  wz1();
+  if (W.busy) return;
+  W.busy = true; // unggah satu per satu
+  let x;
+  while ((x = W.items.find(y => y.status === "up"))) {
+    try { x.img = (await api("POST", "/api/upload", { dataUrl: await prepare(x.file) })).img; x.status = "ok"; }
+    catch (e) { x.status = "err"; say(`${x.file.name}: ${e.message}`, true); }
+    if (W.step === 1) wz1();
+  }
+  W.busy = false;
+}
+
+async function wzSave() {
+  const x = W.items[W.i], v = id => $(id).value.trim(), fail = t => { $("werr").textContent = t; };
+  if (!v("wn")) return fail("Nama produk wajib diisi.");
+  if (!(Number(v("wp")) > 0)) return fail("Harga wajib diisi.");
+  data.products.unshift({ id: x.id, name: v("wn"), desc: v("wd"), price: Number(v("wp")), cat: v("wc") || "Lainnya", stock: v("ws") === "" ? null : Number(v("ws")), badge: $("wb").value, img: x.img });
+  try { grab(); await api("PUT", "/api/data", data); }
+  catch (e) { data.products.shift(); return fail(e.message); }
+  x.status = "saved"; W.cat = v("wc"); W.added++;
+  page = 1; render(); settle(); wz();
+}
+
+$("wz").addEventListener("click", e => {
+  const b = e.target.closest("[data-w]"); if (!b) return;
+  const a = b.dataset.w, n = +b.dataset.n;
+  if (a === "rm") { dropItem(n); wz1(); }
+  if (a === "start") { W.items = W.items.filter(x => x.status === "ok"); W.step = 2; W.i = 0; wz(); }
+  if (a === "save") wzSave();
+  if (a === "drop") { dropItem(W.i); settle(); wz(); }
+  if (a === "go" && W.items[n].status !== "saved") { W.i = n; wz(); }
+  if (a === "again") { Object.assign(W, { step: 1, items: [], i: 0, added: 0 }); wz(); }
+  if (a === "katalog") document.querySelector('[data-view="katalog"]').click();
+});
+$("wz").addEventListener("change", e => { if (e.target.id === "wfiles") addFiles([...e.target.files]); });
+$("wz").addEventListener("dragover", e => { if (e.target.closest("#drop")) { e.preventDefault(); $("drop").classList.add("over"); } });
+$("wz").addEventListener("dragleave", () => $("drop")?.classList.remove("over"));
+$("wz").addEventListener("drop", e => { if (e.target.closest("#drop")) { e.preventDefault(); addFiles([...e.dataTransfer.files]); } });
+document.addEventListener("keydown", e => { if (e.ctrlKey && e.key === "Enter" && W.step === 2 && !$("v-bulk").hidden) wzSave(); });
+
+// ===== invoice & pengiriman =====
+// alur: invoice dibuat (belum dibayar) -> bukti bayar diunggah -> otomatis masuk Pengiriman -> dikirim (kurir + resi)
+let orders = [], iTab = "unpaid", iPage = 1, oTab = "todo", oPage = 1, cur = null;
+const OPER = 15; // baris yang dimuat setiap kali menggulir ke bawah
+const today = () => new Date().toLocaleDateString("sv");
+const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
+const dfmt = d => d ? new Date(d + "T00:00").toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : "-";
+const rpf = n => "Rp" + (n || 0).toLocaleString("id-ID");
+const newId = () => Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+const renderAll = () => { renderInvoices(); renderOrders(); };
+// daftar bertambah sendiri ke bawah saat penanda di dasar daftar yang sedang terlihat hampir muncul
+function autoMore() {
+  const near = el => !el.hidden && el.offsetParent !== null && el.getBoundingClientRect().top < innerHeight + 300;
+  if (near($("pager"))) { page++; render(); }
+  else if (near($("iv-pager"))) { iPage++; renderInvoices(); }
+  else if (near($("opager"))) { oPage++; renderOrders(); }
+}
+addEventListener("scroll", autoMore, { passive: true });
+const monthOpts = ms => [...new Set(ms.filter(Boolean))].sort().reverse().map(m => [m, new Date(m + "-01T00:00").toLocaleDateString("id-ID", { month: "long", year: "numeric" })]);
+const tabs = (cur, items, attr) => items.map(([k, l, n]) => `<button class="${cur === k ? "on" : ""}" data-${attr}="${k}">${l} <span>${n}</span></button>`).join("");
+const dots = (ctx, o) => `<button class="dots" data-menu="${ctx}" data-oid="${esc(o.id)}" aria-label="Menu lainnya">⋮</button>`;
+const normPhone = v => { let d = String(v ?? "").replace(/\D/g, ""); if (d.startsWith("62")) d = "0" + d.slice(2); else if (d.startsWith("8")) d = "0" + d; return d; };
+const maskPhone = p => p.slice(0, 2) + "*".repeat(Math.max(0, p.length - 5)) + p.slice(-3); // hanya "08" dan 3 angka terakhir
+const maskWord = w => /[a-z]/i.test(w) && w.length > 2 ? w.slice(0, 2) + "*".repeat(w.length - 2) : w; // angka (ukuran) tetap terlihat
+const maskName = n => n.split(/\s+/).map(maskWord).join(" ");
+const calc = (items, shipping = 0) => {
+  const gross = items.reduce((s, i) => s + i.qty * i.price, 0), disc = items.reduce((s, i) => s + i.discount, 0);
+  return { gross, disc, ship: shipping, total: gross - disc + shipping };
+};
+const itemsText = o => o.items.map(i => `${i.name}${i.note ? ` (${i.note})` : ""} x${i.qty}`).join("\n");
+const dlong = d => d ? new Date(d + "T00:00").toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "-";
+const BADGE_LABEL = { "": "Tanpa label", new: "New Stock", hot: "Hot Item", flash: "Flash Sale" };
+const badgeOpts = cur => Object.entries(BADGE_LABEL).map(([k, l]) => `<option value="${k}" ${(cur || "") === k ? "selected" : ""}>${l}</option>`).join("");
+const labelCells = box => { const th = [...box.querySelectorAll("th")].map(h => h.textContent); box.querySelectorAll("tbody tr").forEach(tr => [...tr.children].forEach((td, i) => { td.dataset.label = th[i] || ""; })); };
+["iv-table", "otable"].forEach(id => new MutationObserver(() => labelCells($(id))).observe($(id), { childList: true }));
+const stat = (l, v, c = "") => `<div class="stat"><small>${l}</small><b style="color:${c}">${v}</b></div>`;
+
+function fillSel(id, first, opts) {
+  const el = $(id), v = el.value;
+  el.innerHTML = `<option value="">${first}</option>` + opts.map(([val, label]) => `<option value="${esc(val)}">${esc(label)}</option>`).join("");
+  el.value = opts.some(o => o[0] === v) ? v : "";
+}
+
+// ---- Invoice
+function renderInvoices() {
+  const unpaid = orders.filter(o => !o.paidAt), paid = orders.filter(o => o.paidAt);
+  $("icount").textContent = unpaid.length;
+  $("iv-stats").innerHTML = stat("BELUM DIBAYAR", unpaid.length, "#c00") + stat("TAGIHAN BELUM DIBAYAR", rpf(unpaid.reduce((s, o) => s + o.total, 0))) + stat("SUDAH DIBAYAR", paid.length, "#1c6b32");
+  $("iv-tabs").innerHTML = tabs(iTab, [["unpaid", "Belum Dibayar", unpaid.length], ["paid", "Sudah Dibayar", paid.length]], "itab");
+  fillSel("iv-m", "Semua bulan", monthOpts(orders.map(o => o.created.slice(0, 7))));
+  const q = $("iv-q").value.toLowerCase(), m = $("iv-m").value;
+  const list = (iTab === "unpaid" ? unpaid : paid)
+    .filter(o => (!q || [o.customer, o.invoice, o.city].join(" ").toLowerCase().includes(q)) && (!m || o.created.slice(0, 7) === m))
+    .sort((a, b) => iTab === "paid" ? b.paidAt.localeCompare(a.paidAt) : a.created.localeCompare(b.created));
+  const pages = Math.max(1, Math.ceil(list.length / OPER));
+  iPage = Math.min(iPage, pages);
+  $("iv-pager").hidden = iPage >= pages; $("iv-pager").textContent = "Memuat data lainnya…";
+  requestAnimationFrame(autoMore);
+  const btn = (a, o, label, cls = "sm") => `<button class="b ${cls}" data-ia="${a}" data-oid="${esc(o.id)}">${label}</button>`;
+  $("iv-table").innerHTML = list.length ? `<table><thead><tr><th>INVOICE<th>PELANGGAN<th>BARANG<th>TOTAL<th>STATUS<th></tr></thead><tbody>${
+    list.slice(0, iPage * OPER).map(o => `<tr>
+      <td><button class="linkbtn2" data-ia="view" data-oid="${esc(o.id)}">${esc(o.invoice)}</button><br><small>${dfmt(o.created)}</small></td>
+      <td><b>${esc(o.customer)}</b><br><small>${esc(o.city || "-")}</small></td>
+      <td class="items">${esc(itemsText(o))}</td>
+      <td><b>${rpf(o.total)}</b></td>
+      <td>${o.paidAt ? `<span class="pay lunas">LUNAS</span><br><small>${dfmt(o.paidAt)} · ${o.shipped ? "Sudah dikirim" : "Menunggu kirim"}</small>` : `<span class="pay belum">BELUM BAYAR</span>`}</td>
+      <td><div class="oact">${o.paidAt ? "" : btn("pay", o, "Tandai Sudah Bayar", "dark")}${dots("inv", o)}</div></td></tr>`).join("")}</tbody></table>`
+    : `<p style="padding:24px;text-align:center">${orders.length ? "Tidak ada invoice yang cocok." : "Belum ada invoice. Klik “+ Buat Invoice”."}</p>`;
+}
+
+function nextInvoice() {
+  const p = "INV-" + today().slice(0, 7).replace("-", "");
+  return p + String(orders.filter(o => o.invoice.startsWith(p)).length + 1).padStart(4, "0");
+}
+
+const IF = ["customer", "phone", "address", "city", "invoice", "shipping"];
+let lines = [];
+const blankLine = () => ({ name: "", note: "", qty: 1, price: "", discount: "" });
+const num = v => Math.round(+v) || 0;
+function sumLines() {
+  const c = calc(lines.map(l => ({ qty: num(l.qty), price: num(l.price), discount: num(l.discount) })), num($("i-shipping").value));
+  $("i-sum").innerHTML = `<div><span>Total Belanja</span><b>${rpf(c.gross)}</b></div><div><span>Total Diskon</span><b>– ${rpf(c.disc)}</b></div><div><span>Ongkos Kirim</span><b>${rpf(c.ship)}</b></div><div class="g"><span>Total</span><b>${rpf(c.total)}</b></div>`;
+}
+function renderLines() {
+  $("i-lines").innerHTML = lines.map((l, n) => `<div class="ln">
+    <input placeholder="Nama produk" value="${esc(l.name)}" data-ln="${n}" data-lf="name">
+    <input placeholder="Mis. ukuran / warna" value="${esc(l.note)}" data-ln="${n}" data-lf="note">
+    <input type="number" min="1" placeholder="Qty" value="${l.qty}" data-ln="${n}" data-lf="qty">
+    <input type="number" min="0" placeholder="Harga" value="${l.price}" data-ln="${n}" data-lf="price">
+    <input type="number" min="0" placeholder="Diskon" value="${l.discount}" data-ln="${n}" data-lf="discount">
+    <button type="button" class="dots" data-lrm="${n}" aria-label="Hapus baris">✕</button></div>`).join("");
+  sumLines();
+}
+$("idlg").addEventListener("input", e => {
+  const t = e.target;
+  if (t.dataset.lf) lines[t.dataset.ln][t.dataset.lf] = t.value;
+  if (t.dataset.lf || t.id === "i-shipping") sumLines();
+});
+$("idlg").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.id === "iaddline") { lines.push(blankLine()); renderLines(); }
+  if (b.dataset.lrm !== undefined && lines.length > 1) { lines.splice(+b.dataset.lrm, 1); renderLines(); }
+});
+
+function openInvoice(o) {
+  cur = o || null;
+  const v = o || { invoice: nextInvoice() };
+  $("ititle").textContent = o ? "Edit Invoice" : "Buat Invoice";
+  IF.forEach(f => { $("i-" + f).value = v[f] || ""; });
+  lines = o ? o.items.map(i => ({ ...i, discount: i.discount || "" })) : [blankLine()];
+  renderLines();
+  $("ierr").textContent = ""; $("idlg").showModal(); $("i-customer").focus();
+}
+$("iadd").onclick = () => openInvoice();
+$("icancel").onclick = () => $("idlg").close();
+$("isave").onclick = async () => {
+  const v = Object.fromEntries(IF.map(f => [f, $("i-" + f).value.trim()])), fail = t => void ($("ierr").textContent = t);
+  v.phone = normPhone(v.phone); v.shipping = num(v.shipping);
+  const items = lines.map(l => ({ name: l.name.trim(), note: (l.note || "").trim(), qty: num(l.qty), price: num(l.price), discount: num(l.discount) }))
+    .filter(i => i.name || i.price || i.discount); // baris yang benar-benar kosong diabaikan
+  if (!v.customer) return fail("Nama pelanggan wajib diisi.");
+  if (!/^08\d{8,12}$/.test(v.phone)) return fail("Nomor HP penerima harus nomor HP Indonesia (diawali 08).");
+  if (!v.address) return fail("Alamat lengkap wajib diisi.");
+  if (!items.length) return fail("Isi barang wajib diisi.");
+  const bad = items.find(i => !i.name || i.qty < 1 || i.price < 1 || i.discount > i.qty * i.price);
+  if (bad) return fail("Setiap barang harus punya nama, jumlah, dan harga; diskon tidak boleh melebihi harga.");
+  v.items = items; v.total = calc(items, v.shipping).total;
+  if (cur) Object.assign(cur, v);
+  else orders.unshift({ id: newId(), created: today(), paidAt: "", proof: "", courier: "", resi: "", shipDate: "", shipped: "", ...v, invoice: v.invoice || nextInvoice() });
+  $("idlg").close(); await saveOrders();
+};
+
+// invoice yang dibuat sistem (cetak / simpan sebagai PDF lewat dialog cetak browser)
+function invoiceHtml(o) {
+  const c = calc(o.items, o.shipping || 0), st = settings, name = st.storeName || "Jasa Titip Belanja";
+  const contact = [st.phone, st.email].filter(Boolean).map(esc).join(" · ");
+  return `
+    <h1 class="vt">INVOICE</h1>
+    <div class="vhead">
+      <div class="vstore"><img src="/assets/logo.png" alt=""><div class="vsub"><b>${esc(name)}</b>${st.address ? `<br>${esc(st.address)}` : ""}${contact ? `<br>${contact}` : ""}${st.npwp ? `<br>NPWP: ${esc(st.npwp)}` : ""}</div></div>
+      <div class="vmeta">No. ${esc(o.invoice)}<br>Tanggal: ${dlong(o.created)}${st.admin ? `<br>Admin: ${esc(st.admin)}` : ""}<br>${o.paidAt ? `<b class="ok">LUNAS · ${dlong(o.paidAt)}</b>` : `<b class="no">BELUM DIBAYAR</b>`}</div>
+    </div>
+    <hr class="vline">
+    <div class="vcols">
+      <div><small>DITAGIHKAN KEPADA</small><div class="vbig">${esc(o.customer)}</div><div>${esc(o.phone)}</div></div>
+      <div><small>ALAMAT PENGIRIMAN</small><div>${esc(o.address)}${o.city ? `<br>${esc(o.city)}` : ""}</div></div>
+      <div><small>TANGGAL PENGIRIMAN</small><div>${o.shipDate ? dfmt(o.shipDate) : "Belum dijadwalkan"}${o.courier ? ` · ${esc(o.courier.toUpperCase())}` : ""}</div></div>
+    </div>
+    <table><thead><tr><th>PRODUK<th>QTY<th>HARGA<th>DISKON<th>SUBTOTAL</tr></thead><tbody>${o.items.map(i => `<tr>
+      <td>${esc(i.name)}${i.note ? ` <span class="vnote">(${esc(i.note)})</span>` : ""}</td><td>${i.qty}</td><td>${rpf(i.price)}</td><td>${i.discount ? rpf(i.discount) : "-"}</td><td>${rpf(i.qty * i.price - i.discount)}</td></tr>`).join("")}</tbody></table>
+    <div class="vtot"><div><span>Total Belanja</span><span>${rpf(c.gross)}</span></div><div><span>Total Diskon</span><span>– ${rpf(c.disc)}</span></div><div><span>Ongkos Kirim</span><span>${rpf(c.ship)}</span></div><div class="g"><span>Total</span><span>${rpf(c.total)}</span></div></div>
+    <hr class="vline">
+    <div class="vfoot">
+      <div>${st.bankNo ? `<small>PAYMENT DETAILS</small>No. Rekening: ${esc(st.bankNo)}${st.bankName ? ` (${esc(st.bankName)})` : ""}${st.bankHolder ? `<br>Atas Nama: ${esc(st.bankHolder)}` : ""}` : ""}</div>
+      <div class="vthx"><img src="/assets/logo.png" alt=""><br>Terima kasih telah mempercayakan<br>belanja Anda kepada kami.${st.admin ? `<br><br>${esc(st.admin)}` : ""}</div>
+    </div>`;
+}
+function openInvoiceView(o) { $("invoice").innerHTML = invoiceHtml(o); $("vdlg").showModal(); }
+$("vprint").onclick = () => window.print();
+$("vclose").onclick = () => $("vdlg").close();
+
+function openPay(o) {
+  cur = o;
+  $("pinfo").textContent = `${o.customer} · ${o.invoice} · ${rpf(o.total)}\n${itemsText(o)}`;
+  dd = { proof: o.proof || "" }; refreshDocs();
+  $("perr").textContent = ""; $("pdlg").showModal();
+}
+$("pcancel").onclick = () => $("pdlg").close();
+$("psave").onclick = async () => {
+  if (!dd.proof) return void ($("perr").textContent = "Bukti pembayaran wajib diunggah.");
+  Object.assign(cur, { proof: dd.proof, paidAt: today() });
+  $("pdlg").close(); await saveOrders(); say("✅ Lunas. Pesanan otomatis masuk ke Pengiriman.");
+};
+
+// ---- Pengiriman: hanya berisi invoice yang sudah dibayar
+function statusOf(o) {
+  if (o.shipped) return { k: "done", t: "Dikirim " + dfmt(o.shipped), rank: 9 };
+  if (!o.shipDate) return { k: "none", t: "Belum Dijadwalkan", rank: 3 };
+  const d = dayDiff(today(), o.shipDate);
+  if (d > 0) return { k: "late", t: `Terlambat ${d} hari`, rank: 0 };
+  return d === 0 ? { k: "today", t: "Hari ini", rank: 1 } : { k: "sched", t: "Terjadwal " + dfmt(o.shipDate), rank: 2 };
+}
+
+function renderOrders() {
+  const all = orders.filter(o => o.paidAt), todo = all.filter(o => !o.shipped), done = all.filter(o => o.shipped);
+  $("ocount").textContent = todo.length;
+  const cnt = k => todo.filter(o => statusOf(o).k === k).length;
+  $("ostats").innerHTML = stat("HARI INI", cnt("today"), "#8a5a00") + stat("TERLAMBAT", cnt("late"), "#c00") + stat("TERJADWAL", cnt("sched")) + stat("BELUM DIJADWALKAN", cnt("none"));
+  $("otabs").innerHTML = tabs(oTab, [["todo", "Perlu Dikirim", todo.length], ["done", "Sudah Dikirim", done.length]], "otab");
+  const mon = o => (o.shipDate || o.paidAt).slice(0, 7);
+  fillSel("om", "Semua bulan", monthOpts(all.map(mon)));
+  fillSel("ok", "Semua kurir", [...new Set(all.map(o => o.courier).filter(Boolean))].sort().map(c => [c, c]));
+  const q = $("oq").value.toLowerCase(), m = $("om").value, c = $("ok").value;
+  const list = (oTab === "todo" ? todo : done)
+    .filter(o => (!q || [o.customer, o.invoice, o.city, o.resi].join(" ").toLowerCase().includes(q)) && (!m || mon(o) === m) && (!c || o.courier === c))
+    .sort((a, b) => oTab === "done" ? b.shipped.localeCompare(a.shipped)
+      : statusOf(a).rank - statusOf(b).rank || (a.shipDate || a.paidAt).localeCompare(b.shipDate || b.paidAt));
+  const pages = Math.max(1, Math.ceil(list.length / OPER));
+  oPage = Math.min(oPage, pages);
+  $("opager").hidden = oPage >= pages; $("opager").textContent = "Memuat data lainnya…";
+  requestAnimationFrame(autoMore);
+  const btn = (a, o, label, cls = "sm") => `<button class="b ${cls}" data-oa="${a}" data-oid="${esc(o.id)}">${label}</button>`;
+  $("otable").innerHTML = list.length ? `<table><thead><tr><th>STATUS<th>PELANGGAN<th>BARANG<th>KURIR<th>JADWAL KIRIM<th>DIBAYAR<th></tr></thead><tbody>${
+    list.slice(0, oPage * OPER).map(o => { const st = statusOf(o); return `<tr>
+      <td><span class="ost ${st.k}">${esc(st.t)}</span></td>
+      <td><b>${esc(o.customer)}</b><br><small>${esc(o.invoice)} · ${esc(o.city || "-")}</small></td>
+      <td class="items">${esc(itemsText(o))}</td>
+      <td>${o.courier ? esc(o.courier) : `<span class="mut">Belum dipilih</span>`}${o.resi ? `<br><small>Resi ${esc(o.resi)}</small>` : ""}</td>
+      <td>${dfmt(o.shipDate)}</td>
+      <td><span class="pay lunas">LUNAS</span> <small>${dfmt(o.paidAt)}</small></td>
+      <td><div class="oact">${o.shipped ? "" : btn("ship", o, "Tandai Sudah Kirim", "dark")}${dots("ship", o)}</div></td></tr>`; }).join("")}</tbody></table>`
+    : `<p style="padding:24px;text-align:center">${all.length ? "Tidak ada pesanan yang cocok." : "Belum ada pesanan siap kirim. Pesanan masuk otomatis setelah invoice dibayar."}</p>`;
+}
+
+async function saveOrders() {
+  try { await api("PUT", "/api/orders", orders); }
+  catch (e) { say(e.message, true); orders = await api("GET", "/api/orders").catch(() => orders); } // kembalikan ke data server
+  renderAll();
+}
+
+function openShip(o) {
+  cur = o;
+  $("sinfo").textContent = `${o.customer} · ${o.invoice}\n${itemsText(o)}`;
+  $("s-courier").value = o.courier; $("s-resi").value = o.resi; $("s-shipDate").value = o.shipDate; $("serr").textContent = "";
+  $("sdlg").showModal(); $("s-courier").focus();
+}
+const shipFields = () => ({ courier: $("s-courier").value.trim(), resi: $("s-resi").value.trim(), shipDate: $("s-shipDate").value });
+$("scancel").onclick = () => $("sdlg").close();
+$("sset").onclick = async () => { Object.assign(cur, shipFields()); $("sdlg").close(); await saveOrders(); };
+$("ssend").onclick = async () => {
+  const f = shipFields();
+  if (!f.courier) return void ($("serr").textContent = "Kurir wajib diisi.");
+  if (!f.resi) return void ($("serr").textContent = "Nomor resi wajib diisi.");
+  Object.assign(cur, f, { shipped: today() });
+  $("sdlg").close(); await saveOrders();
+};
+
+async function invAction(a, o) {
+  if (a === "view") return openInvoiceView(o);
+  if (a === "pay") return openPay(o);
+  if (a === "edit") return openInvoice(o);
+  if (a === "unpay") { if (!confirm(`Batalkan pembayaran ${o.invoice}? Pesanan keluar dari Pengiriman.`)) return; o.paidAt = ""; }
+  if (a === "del") { if (!confirm(`Hapus invoice ${o.invoice} (${o.customer})?`)) return; orders = orders.filter(x => x !== o); }
+  await saveOrders();
+}
+// label pengiriman: nomor HP dan isi barang disamarkan, jumlah barang tampil, harga tidak ditampilkan
+function openLabel(o) {
+  const items = o.items, total = items.reduce((s, i) => s + i.qty, 0);
+  $("label").innerHTML = `
+    <div class="lh"><img src="/assets/logo.png" alt=""><div><b>LABEL PENGIRIMAN</b><br><span>${esc(o.invoice)}</span></div></div>
+    <div class="ls"><small>PENERIMA</small><div class="ln">${esc(o.customer)}</div><div class="lp">${esc(maskPhone(o.phone))}</div></div>
+    <div class="ls"><small>ALAMAT</small><div class="la">${esc(o.address)}${o.city ? "\n" + esc(o.city) : ""}</div></div>
+    <div class="ls"><small>ISI PAKET</small><table>${items.map(i => `<tr><td>${esc(maskName(i.name))}</td><td>${i.qty}x</td></tr>`).join("")}
+      <tr class="lt"><td>Total</td><td>${total} pcs</td></tr></table></div>`;
+  $("ldlg").showModal();
+}
+$("lprint").onclick = () => window.print();
+$("lclose").onclick = () => $("ldlg").close();
+
+async function shipAction(a, o) {
+  if (a === "view") return openInvoiceView(o);
+  if (a === "label") return openLabel(o);
+  if (a === "ship" || a === "set") return openShip(o);
+  if (a === "unship") { o.shipped = ""; await saveOrders(); }
+}
+$("v-invoice").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.itab) { iTab = b.dataset.itab; iPage = 1; return renderInvoices(); }
+  const o = b.dataset.ia && orders.find(x => x.id === b.dataset.oid);
+  if (o) invAction(b.dataset.ia, o);
+});
+$("v-pengiriman").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.otab) { oTab = b.dataset.otab; oPage = 1; return renderOrders(); }
+  const o = b.dataset.oa && orders.find(x => x.id === b.dataset.oid);
+  if (o) shipAction(b.dataset.oa, o);
+});
+
+// menu ⋮: satu elemen mengambang di luar tabel (tidak terpotong), isinya mengikuti baris yang diklik
+const pop = $("pop");
+let popFor = null;
+function popItems(ctx, o) {
+  const act = ctx === "inv"
+    ? (o.paidAt ? (o.shipped ? "" : `<button data-ia="unpay">Batal bayar</button>`) : `<button data-ia="edit">Edit invoice</button>`)
+    : `<button data-oa="label">🏷️ Cetak label</button>` + (o.shipped ? `<button data-oa="unship">Batal kirim</button>` : `<button data-oa="set">Atur kurir &amp; jadwal</button>`);
+  const docs = `<button data-${ctx === "inv" ? "ia" : "oa"}="view">📄 Lihat / cetak invoice</button>` + (o.proof ? `<button data-doc="${esc(o.proof)}">🧾 Lihat bukti bayar</button>` : "");
+  const del = ctx === "inv" && !o.paidAt ? `<button class="danger" data-ia="del">Hapus invoice</button>` : "";
+  return act + docs + del || `<button disabled>Tidak ada aksi</button>`;
+}
+document.addEventListener("click", e => {
+  const d = e.target.closest(".dots");
+  if (!d) { if (!e.target.closest("#pop")) pop.hidden = true; return; }
+  const o = orders.find(x => x.id === d.dataset.oid); if (!o) return;
+  if (!pop.hidden && popFor === d) { pop.hidden = true; return; }
+  popFor = d; pop.innerHTML = popItems(d.dataset.menu, o); pop.hidden = false;
+  const r = d.getBoundingClientRect(), h = pop.offsetHeight, w = pop.offsetWidth;
+  pop.style.left = Math.max(8, r.right - w) + "px";
+  pop.style.top = (r.bottom + h + 8 > innerHeight ? r.top - h - 4 : r.bottom + 4) + "px";
+});
+pop.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b || b.disabled) return;
+  pop.hidden = true; // dokumen (data-doc) dibuka oleh handler dokumen di bawah
+  const o = orders.find(x => x.id === popFor?.dataset.oid); if (!o) return;
+  if (b.dataset.ia) invAction(b.dataset.ia, o);
+  if (b.dataset.oa) shipAction(b.dataset.oa, o);
+});
+["scroll", "resize"].forEach(ev => addEventListener(ev, () => { pop.hidden = true; }, true));
+addEventListener("keydown", e => { if (e.key === "Escape") pop.hidden = true; });
+["input", "change"].forEach(ev => {
+  $("v-invoice").addEventListener(ev, e => { if (e.target.closest(".ofil")) { iPage = 1; renderInvoices(); } });
+  $("v-pengiriman").addEventListener(ev, e => { if (e.target.closest(".ofil")) { oPage = 1; renderOrders(); } });
+});
+
+// dokumen: bukti pembayaran (foto/PDF); privat, dibuka lewat login admin
+let dd = { proof: "" };
+const DOC_ACCEPT = { proof: "application/pdf,image/jpeg,image/png,image/webp" };
+const fileToDataUrl = f => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => no(new Error("Gagal membaca file")); r.readAsDataURL(f); });
+
+function refreshDocs() {
+  document.querySelectorAll(".docbox").forEach(b => {
+    const k = b.dataset.kind, f = dd[k];
+    b.innerHTML = (f ? `<span class="chip ok">✓ Terunggah</span> <button type="button" class="linkbtn2" data-doc="${esc(f)}">Lihat</button> <button type="button" class="linkbtn" data-docdel="${k}">Hapus</button>`
+      : `<span class="chip err">Belum ada</span>`) + `<input type="file" accept="${DOC_ACCEPT[k]}" data-docup="${k}">`;
+  });
+}
+
+async function viewDoc(name) {
+  const r = await fetch("/api/doc/" + name, { headers: { "x-admin": pw } });
+  if (!r.ok) return say("Dokumen tidak ditemukan.", true);
+  window.open(URL.createObjectURL(await r.blob()), "_blank");
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-doc],[data-docdel]"); if (!b) return;
+  e.preventDefault();
+  if (b.dataset.doc) viewDoc(b.dataset.doc);
+  else { dd[b.dataset.docdel] = ""; refreshDocs(); }
+});
+document.addEventListener("change", async e => {
+  const k = e.target.dataset.docup; if (!k || !e.target.files[0]) return;
+  const f = e.target.files[0];
+  try {
+    if (f.size > 5e6 && f.type === "application/pdf") throw new Error("PDF maksimal 5MB");
+    const dataUrl = f.type === "application/pdf" ? await fileToDataUrl(f) : await prepare(f, false);
+    dd[k] = (await api("POST", "/api/doc", { dataUrl })).file;
+    refreshDocs();
+  } catch (err) { say(err.message, true); alert(err.message); e.target.value = ""; }
+});
+</script>
+</body>
+</html>
