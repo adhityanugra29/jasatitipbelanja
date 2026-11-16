@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#D32F82">
 <title>Jasa Titip Belanja</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <style>
   :root { --pink:#F44D92; --pink-d:#D32F82; --pink-soft:#FFE3EF; --teal:#0BBDB6; --teal-d:#078A85; --teal-soft:#D9F4F2; --ink:#0E3B43; --bg:#FFF8FB; --line:#F3D5E3; --side:#0E3B43; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -15,11 +15,11 @@
   h1, h3 { font-family:"Plus Jakarta Sans",sans-serif; }
   .head { text-align:center; }
   .head img { height:110px; }
-  h1 { margin:4px 0 16px; font-size:2.2rem; }
+  h1 { margin:4px 0 16px; font-weight:800; font-size:2.2rem; }
   .notice { background:var(--teal-soft); border-radius:10px; padding:14px; text-align:center; font-weight:700; margin-bottom:16px; }
   .tools { display:flex; gap:10px; position:sticky; top:0; z-index:5; background:var(--bg); padding:8px 0; } /* pencarian tetap terlihat saat menggulir */
   .search { flex:1; display:flex; align-items:center; gap:8px; background:#fff; border:1.5px solid var(--line); border-radius:10px; padding:0 12px; }
-  .search input { flex:1; min-width:0; padding:14px 0; font:inherit; color:var(--ink); border:0; outline:0; background:none; }
+  .search input { flex:1; min-width:0; padding:14px 0; font:inherit; font-weight:500; color:var(--ink); border:0; outline:0; background:none; }
   .ibtn { position:relative; width:56px; flex:none; background:#fff; border:1.5px solid var(--line); border-radius:10px; color:var(--ink); display:grid; place-items:center; cursor:pointer; }
   .ibtn svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
   .badge { position:absolute; top:-8px; right:-8px; min-width:22px; height:22px; border-radius:99px; background:var(--pink-d); color:#fff; font-size:.8rem; font-weight:700; display:grid; place-items:center; }
@@ -35,8 +35,8 @@
   .tagp.hot { background:#E23B2E; }
   .tagp.flash { background:#FFD23F; color:var(--ink); }
   .nopic { aspect-ratio:1; border-radius:8px; margin-bottom:8px; background:var(--pink-soft); display:grid; place-items:center; font-size:3rem; }
-  .card h3 { overflow-wrap:anywhere; margin:0 0 2px; font-size:1.05rem; }
-  .sub { font-size:.9rem; opacity:.75; }
+  .card h3 { overflow-wrap:anywhere; margin:0 0 2px; font-weight:700; font-size:1.05rem; }
+  .sub { font-size:.9rem; font-weight:400; opacity:.75; }
   .price { font-weight:700; font-size:1.15rem; margin:6px 0 2px; color:var(--pink-d); }
   .stock { font-size:.9rem; font-weight:700; }
   .act { display:flex; margin-top:auto; padding-top:12px; }
@@ -44,7 +44,7 @@
   .step b { font-size:1.15rem; }
   .step button:disabled { opacity:.35; cursor:not-allowed; }
   .step button, .row button { width:44px; height:44px; border-radius:8px; border:1.5px solid var(--line); background:var(--pink-soft); color:var(--ink); font:inherit; font-size:1.2rem; cursor:pointer; }
-  .cartbtn { flex:1; height:48px; border:0; border-radius:8px; background:var(--pink-d); color:#fff; display:flex; align-items:center; justify-content:center; gap:8px; font:inherit; font-weight:700; cursor:pointer; }
+  .cartbtn { flex:1; height:48px; border:0; border-radius:8px; background:var(--pink-d); color:#fff; display:flex; align-items:center; justify-content:center; gap:8px; font:inherit; font-weight:600; cursor:pointer; }
   .cartbtn:disabled { opacity:.35; cursor:not-allowed; }
   .cartbtn svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
   #pager { text-align:center; margin:20px 0 0; font-weight:700; opacity:.6; }
@@ -58,7 +58,7 @@
   .total { display:flex; justify-content:space-between; font-weight:700; padding:12px 0; }
   .send, .done { display:block; width:100%; text-align:center; padding:14px; border:0; border-radius:12px; background:var(--pink-d); color:#fff; font:inherit; font-weight:700; text-decoration:none; cursor:pointer; }
   .close { width:100%; margin-top:8px; padding:12px; border:0; background:none; font:inherit; color:var(--ink); cursor:pointer; }
-  label.chk { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
+  label.chk { display:flex; font-weight:500; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
   label.chk input { width:22px; height:22px; accent-color:var(--pink-d); }
   /* layar HP */
   @media (max-width:600px) {
