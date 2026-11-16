@@ -41,7 +41,8 @@ const file = (res, p) => fs.readFile(p, (e, d) => {
 });
 
 const handler = async (req, res) => {
-  const url = req.url.split("?")[0];
+  // di Vercel req.url berisi tujuan rewrite; path asli dikirim lewat ?p= (lihat vercel.json)
+  const url = new URL(req.url, "http://x").searchParams.get("p") || req.url.split("?")[0];
   try {
     if (req.method === "GET" && (url === "/" || url === "/index.html")) return file(res, path.join(DIR, "index.html"));
     if (req.method === "GET" && url === "/admin") return file(res, path.join(DIR, "admin.html"));

@@ -9,3 +9,6 @@ settings.json
 uploads
 docs
 *.log
+
+.vercel
+.env*
