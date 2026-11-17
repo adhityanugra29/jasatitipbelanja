@@ -178,6 +178,13 @@
   .av { flex:none; width:44px; height:44px; border-radius:50%; display:grid; place-items:center; background:var(--pink-soft); color:var(--pink-d); font-weight:800; font-size:1.2rem; }
   .plm { flex:1; min-width:0; display:flex; flex-direction:column; align-items:flex-start; }
   .plm small { opacity:.65; }
+  .pls.shp { grid-template-columns:1fr 1fr; }
+  .pls.shp .wide { grid-column:1/-1; }
+  .pls .shi { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:.95rem; }
+  .pls .rs { display:inline; font-size:.8rem; letter-spacing:0; font-weight:400; color:inherit; opacity:.65; }
+  .plf { margin-top:12px; padding-top:12px; border-top:1px solid var(--line); }
+  .plf .b.dark { flex:1; }
+  #oq, #om, #ok { background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:12px 14px; margin:0; }
   .plc a.wa { flex:none; display:grid; place-items:center; width:44px; height:44px; padding:0; border:0; border-radius:50%; background:#25D366; }
   .plc a.wa svg { width:24px; height:24px; fill:#fff; }
   .plm b { font-size:1.05rem; }
@@ -370,7 +377,7 @@
         <input id="oq" placeholder="Cari pelanggan, no. invoice, kota, resi">
         <select id="om"></select><select id="ok"></select>
       </div>
-      <div class="otable" id="otable"></div>
+      <div class="plgrid" id="otable"></div>
       <nav id="opager" class="pgr" hidden></nav>
     </section>
     <section id="v-pelanggan" hidden>
@@ -756,6 +763,7 @@ const BADGE_LABEL = { "": "Tanpa label", new: "New Stock", hot: "Hot Item", flas
 const badgeOpts = cur => Object.entries(BADGE_LABEL).map(([k, l]) => `<option value="${k}" ${(cur || "") === k ? "selected" : ""}>${l}</option>`).join("");
 const labelCells = box => { const th = [...box.querySelectorAll("th")].map(h => h.textContent); box.querySelectorAll("tbody tr").forEach(tr => [...tr.children].forEach((td, i) => { td.dataset.label = th[i] || ""; })); };
 ["iv-table", "otable", "pl-table"].forEach(id => new MutationObserver(() => labelCells($(id))).observe($(id), { childList: true }));
+const ini = n => (n || "?").replace(/^(ibu|bu|bapak|pak)\s+/i, "").trim().charAt(0).toUpperCase();
 const stat = (l, v, c = "") => `<div class="stat"><small>${l}</small><b style="color:${c}">${v}</b></div>`;
 
 function fillSel(id, first, opts) {
@@ -820,7 +828,6 @@ function renderCustomers() {
   const all = customers(), q = $("pl-q").value.toLowerCase();
   $("pl-stats").innerHTML = stat("PELANGGAN", all.length) + stat("PELANGGAN ULANG (≥2 INVOICE)", all.filter(c => c.inv.length > 1).length) + stat("TOTAL BELANJA (LUNAS)", rpf(all.reduce((s, c) => s + c.spent, 0)), "var(--teal-d)");
   const list = all.filter(c => !q || [c.name, c.phone, c.city].join(" ").toLowerCase().includes(q));
-  const ini = n => (n || "?").replace(/^(ibu|bu|bapak|pak)\s+/i, "").trim().charAt(0).toUpperCase();
   $("pl-table").innerHTML = list.length ? list.map(c => `<div class="plc ${plOpen === c.phone ? "open" : ""}">
       <div class="plh"><span class="av">${esc(ini(c.name))}</span>
         <div class="plm"><b>${esc(c.name)}</b><small>${esc(c.city || "-")} · ${esc(c.phone)}</small></div>
@@ -1018,15 +1025,15 @@ function renderOrders() {
   $("opager").hidden = oPage >= pages; $("opager").textContent = "Memuat data lainnya…";
   requestAnimationFrame(autoMore);
   const btn = (a, o, label, cls = "sm") => `<button class="b ${cls}" data-oa="${a}" data-oid="${esc(o.id)}">${label}</button>`;
-  $("otable").innerHTML = list.length ? `<table><thead><tr><th>STATUS<th>PELANGGAN<th>BARANG<th>KURIR<th>JADWAL KIRIM<th>DIBAYAR<th></tr></thead><tbody>${
-    list.slice(0, oPage * OPER).map(o => { const st = statusOf(o); return `<tr>
-      <td><span class="ost ${st.k}">${esc(st.t)}</span></td>
-      <td><b>${esc(o.customer)}</b><br><small>${esc(o.invoice)} · ${esc(o.city || "-")}</small></td>
-      <td class="items">${esc(itemsText(o))}</td>
-      <td>${o.courier ? esc(o.courier) : `<span class="mut">Belum dipilih</span>`}${o.resi ? `<br><small>Resi ${esc(o.resi)}</small>` : ""}</td>
-      <td>${dfmt(o.shipDate)}</td>
-      <td><span class="pay lunas">LUNAS</span> <small>${dfmt(o.paidAt)}</small></td>
-      <td><div class="oact">${o.shipped ? "" : btn("ship", o, "Tandai Sudah Kirim", "dark")}${dots("ship", o)}</div></td></tr>`; }).join("")}</tbody></table>`
+  $("otable").innerHTML = list.length ? list.slice(0, oPage * OPER).map(o => { const st = statusOf(o); return `<div class="plc">
+      <div class="plh"><span class="av">${esc(ini(o.customer))}</span>
+        <div class="plm"><b>${esc(o.customer)}</b><small>${esc(o.invoice)} · ${esc(o.city || "-")}</small></div>
+        <span class="ost ${st.k}">${esc(st.t)}</span></div>
+      <div class="pls shp"><div class="wide"><small>BARANG</small><span class="shi" title="${esc(itemsText(o))}">${esc(itemsText(o).replace(/\n/g, ", "))}</span></div>
+        <div><small>KURIR</small><b>${o.courier ? esc(o.courier) : `<span class="mut">Belum dipilih</span>`}</b>${o.resi ? `<br><small class="rs">Resi ${esc(o.resi)}</small>` : ""}</div>
+        <div><small>JADWAL KIRIM</small><b>${dfmt(o.shipDate)}</b></div>
+        <div><small>DIBAYAR</small><span class="pay lunas">LUNAS</span> <small class="rs">${dfmt(o.paidAt)}</small></div></div>
+      <div class="oact plf">${o.shipped ? "" : btn("ship", o, "Tandai Sudah Kirim", "dark")}${dots("ship", o)}</div></div>`; }).join("")
     : `<p style="padding:24px;text-align:center">${all.length ? "Tidak ada pesanan yang cocok." : "Belum ada pesanan siap kirim. Pesanan masuk otomatis setelah invoice dibayar."}</p>`;
 }
 
