@@ -247,6 +247,8 @@
       <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg>Invoice <span class="tag" id="icount"></span></button>
     <button class="nav" data-view="pengiriman">
       <svg viewBox="0 0 24 24"><path d="M2 6h12v10H2zM14 9h4l3 3v4h-7M6 19.5a1.5 1.5 0 1 0 0-.01M17 19.5a1.5 1.5 0 1 0 0-.01"/></svg>Pengiriman <span class="tag" id="ocount"></span></button>
+    <button class="nav" data-view="pelanggan">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>Pelanggan</button>
     <div class="grp">TOKO</div>
     <button class="nav" data-view="pengaturan">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2-1.2L14.2 3h-4.4l-.4 2.7a7 7 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2 1.2l.4 2.7h4.4l.4-2.7a7 7 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg>Pengaturan</button>
@@ -288,6 +290,12 @@
       </div>
       <div class="otable" id="otable"></div>
       <nav id="opager" class="pgr" hidden></nav>
+    </section>
+    <section id="v-pelanggan" hidden>
+      <div class="pagehead"><h2>Pelanggan</h2></div>
+      <div class="stats" id="pl-stats"></div>
+      <div class="ofil"><input id="pl-q" placeholder="Cari nama, HP, kota"></div>
+      <div class="otable" id="pl-table"></div>
     </section>
     <section id="v-pengaturan" hidden>
       <div class="pagehead"><h2>Pengaturan Toko</h2></div>
@@ -348,7 +356,7 @@
 </dialog>
 <dialog id="sdlg">
   <h2>Pengiriman</h2>
-  <p id="sinfo" style="margin-top:0;white-space:pre-line"></p>
+  <p id="sinfo" style="margin-top:0"></p>
   <label>Kurir (ditentukan admin)</label><input id="s-courier" list="couriers">
   <label>Nomor resi</label><input id="s-resi">
   <label>Jadwal kirim</label><input id="s-shipDate" type="date">
@@ -450,11 +458,11 @@ $("scrim").onclick = () => $("side").classList.remove("open"); // ketuk area gel
 
 // "bulk" = halaman Tambah Produk; menu Katalog tetap menyala saat di sana
 function showView(v) {
-  for (const x of ["katalog", "bulk", "invoice", "pengiriman", "pengaturan"]) $("v-" + x).hidden = x !== v;
+  for (const x of ["katalog", "bulk", "invoice", "pengiriman", "pelanggan", "pengaturan"]) $("v-" + x).hidden = x !== v;
   document.querySelectorAll("[data-view]").forEach(x => x.classList.toggle("on", x.dataset.view === (v === "bulk" ? "katalog" : v)));
   $("side").classList.remove("open"); say("");
   if (v === "bulk") wz();
-  if (v === "invoice" || v === "pengiriman") renderAll();
+  if (v === "invoice" || v === "pengiriman" || v === "pelanggan") renderAll();
 }
 document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => showView(b.dataset.view));
 $("wback").onclick = () => showView("katalog");
@@ -635,7 +643,7 @@ const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
 const dfmt = d => d ? new Date(d + "T00:00").toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : "-";
 const rpf = n => "Rp" + (n || 0).toLocaleString("id-ID");
 const newId = () => Date.now() + "-" + Math.random().toString(36).slice(2, 6);
-const renderAll = () => { renderInvoices(); renderOrders(); };
+const renderAll = () => { renderInvoices(); renderOrders(); renderCustomers(); };
 // daftar bertambah sendiri ke bawah saat penanda di dasar daftar yang sedang terlihat hampir muncul
 function autoMore() {
   const near = el => !el.hidden && el.offsetParent !== null && el.getBoundingClientRect().top < innerHeight + 300;
@@ -660,7 +668,7 @@ const dlong = d => d ? new Date(d + "T00:00").toLocaleDateString("id-ID", { day:
 const BADGE_LABEL = { "": "Tanpa label", new: "New Stock", hot: "Hot Item", flash: "Flash Sale" };
 const badgeOpts = cur => Object.entries(BADGE_LABEL).map(([k, l]) => `<option value="${k}" ${(cur || "") === k ? "selected" : ""}>${l}</option>`).join("");
 const labelCells = box => { const th = [...box.querySelectorAll("th")].map(h => h.textContent); box.querySelectorAll("tbody tr").forEach(tr => [...tr.children].forEach((td, i) => { td.dataset.label = th[i] || ""; })); };
-["iv-table", "otable"].forEach(id => new MutationObserver(() => labelCells($(id))).observe($(id), { childList: true }));
+["iv-table", "otable", "pl-table"].forEach(id => new MutationObserver(() => labelCells($(id))).observe($(id), { childList: true }));
 const stat = (l, v, c = "") => `<div class="stat"><small>${l}</small><b style="color:${c}">${v}</b></div>`;
 
 function fillSel(id, first, opts) {
@@ -695,6 +703,37 @@ function renderInvoices() {
       <td><div class="oact">${o.paidAt ? "" : btn("pay", o, "Tandai Sudah Bayar", "dark")}${dots("inv", o)}</div></td></tr>`).join("")}</tbody></table>`
     : `<p style="padding:24px;text-align:center">${orders.length ? "Tidak ada invoice yang cocok." : "Belum ada invoice. Klik “+ Buat Invoice”."}</p>`;
 }
+
+// ---- Pelanggan (PLG-*): diturunkan dari invoice, satu pelanggan = satu nomor HP; tidak ada data baru disimpan
+let plOpen = "";
+function customers() {
+  const m = new Map();
+  for (const o of [...orders].sort((a, b) => b.created.localeCompare(a.created))) { // terbaru dulu: data kontak = invoice terbaru
+    const c = m.get(o.phone) || { phone: o.phone, name: o.customer, city: o.city, address: o.address, last: o.created, inv: [], spent: 0 };
+    c.inv.push(o); if (o.paidAt) c.spent += o.total;
+    m.set(o.phone, c);
+  }
+  return [...m.values()];
+}
+function renderCustomers() {
+  const all = customers(), q = $("pl-q").value.toLowerCase();
+  $("pl-stats").innerHTML = stat("PELANGGAN", all.length) + stat("PELANGGAN ULANG (≥2 INVOICE)", all.filter(c => c.inv.length > 1).length) + stat("TOTAL BELANJA (LUNAS)", rpf(all.reduce((s, c) => s + c.spent, 0)), "#1c6b32");
+  const list = all.filter(c => !q || [c.name, c.phone, c.city].join(" ").toLowerCase().includes(q));
+  $("pl-table").innerHTML = list.length ? `<table><thead><tr><th>PELANGGAN<th>HP<th>KOTA<th>INVOICE<th>TOTAL BELANJA<th>TERAKHIR<th></tr></thead><tbody>${
+    list.map(c => `<tr>
+      <td><button class="linkbtn2" data-pl="${esc(c.phone)}">${esc(c.name)}</button></td>
+      <td>${esc(c.phone)}</td><td>${esc(c.city || "-")}</td><td>${c.inv.length}</td><td><b>${rpf(c.spent)}</b></td><td>${dfmt(c.last)}</td>
+      <td><a class="b sm" target="_blank" rel="noopener" href="https://wa.me/62${esc(c.phone.slice(1))}">WhatsApp</a></td></tr>${
+      plOpen === c.phone ? `<tr><td colspan="7"><small>${esc(c.address)}</small>${c.inv.map(o => `<div style="padding:6px 0"><button class="linkbtn2" data-ia="view" data-oid="${esc(o.id)}">${esc(o.invoice)}</button> · ${dfmt(o.created)} · ${rpf(o.total)} <span class="pay ${o.paidAt ? "lunas" : "belum"}">${o.paidAt ? "LUNAS" : "BELUM BAYAR"}</span></div>`).join("")}</td></tr>` : ""}`).join("")}</tbody></table>`
+    : `<p style="padding:24px;text-align:center">${all.length ? "Tidak ada pelanggan yang cocok." : "Belum ada pelanggan"}</p>`;
+}
+$("pl-q").oninput = renderCustomers;
+$("pl-table").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.pl) { plOpen = plOpen === b.dataset.pl ? "" : b.dataset.pl; renderCustomers(); }
+  const o = b.dataset.ia && orders.find(x => x.id === b.dataset.oid); // PLG-5: nomor invoice membuka invoice
+  if (o) openInvoiceView(o);
+});
 
 function nextInvoice() {
   const p = "INV-" + today().slice(0, 7).replace("-", "");
@@ -848,7 +887,12 @@ async function saveOrders() {
 
 function openShip(o) {
   cur = o;
-  $("sinfo").textContent = `${o.customer} · ${o.invoice}\n${itemsText(o)}`;
+  // shortcut: pesanan tidak menyimpan id produk, foto dicocokkan lewat nama (nama saja atau nama + catatan); tak cocok = ikon 🛍️
+  const pic = i => { const k = s => (s || "").trim().toLowerCase(), n = k(i.name), nn = k(`${i.name} ${i.note}`), nb = k(`${i.name} (${i.note})`);
+    return (data.products.find(p => [nn, nb, n].includes(k(p.name)) && p.img) || {}).img; };
+  $("sinfo").innerHTML = `${esc(o.customer)} · ${esc(o.invoice)}` + o.items.map(i => `<div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+    ${pic(i) ? `<img src="${esc(pic(i))}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:8px;flex:none">` : `<div class="ph" style="width:64px;height:64px">🛍️</div>`}
+    <span>${esc(i.name)}${i.note ? ` (${esc(i.note)})` : ""} x${i.qty}</span></div>`).join("");
   $("s-courier").value = o.courier; $("s-resi").value = o.resi; $("s-shipDate").value = o.shipDate; $("serr").textContent = "";
   $("sdlg").showModal(); $("s-courier").focus();
 }

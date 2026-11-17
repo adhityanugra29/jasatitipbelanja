@@ -20,6 +20,7 @@ Format: tanggal, keputusan, alasan. Yang masih terbuka ada di bagian bawah.
 - **2026-11-03 — Penyimpanan dipindah ke MongoDB dan dideploy di Vercel.** Dilakukan pemilik proyek di luar sesi ini. *Dampak:* server lokal butuh `MONGODB_URI`; lihat API-8.
 - **2026-11-03 — Batas unggah dokumen diturunkan dari 5MB ke 3MB.** *Alasan:* batas isi permintaan Vercel ±4,5MB; file 5MB menjadi ±6,7MB setelah base64 dan akan gagal di Vercel.
 - **2026-11-03 — Cara kerja memakai Spec-Driven Development** (lihat `README.md`).
+- **2026-11-17 — Menu Pelanggan di admin diturunkan dari invoice; total belanja hanya dari invoice lunas.** *Alasan:* satu sumber data, tidak ada data pelanggan baru; permintaan pemilik toko.
 
 ## Terbuka (belum diputuskan)
 

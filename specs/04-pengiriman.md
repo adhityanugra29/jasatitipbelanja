@@ -17,7 +17,7 @@ Pelacakan resi otomatis ke ekspedisi. Pelanggan memilih kurir. Kurir, resi, dan 
 - **KIR-4** Menu ⋮ per baris: Cetak label, Atur kurir & jadwal / Batal kirim, Lihat/cetak invoice, Lihat bukti bayar. — ⬜
 
 **Kurir dan kirim**
-- **KIR-5** Kurir **ditentukan admin** (pelanggan tidak memilih). Formulir pengiriman berisi kurir, nomor resi, jadwal kirim. **Simpan Jadwal** menyimpan tanpa mengirim (boleh sebagian kosong). **Konfirmasi Kirim** mewajibkan kurir dan resi, lalu menandai terkirim dengan tanggal hari itu. — ✅ aturan server (API-4c); formulir ⬜
+- **KIR-5** Kurir **ditentukan admin** (pelanggan tidak memilih). Formulir pengiriman berisi kurir, nomor resi, jadwal kirim. **Simpan Jadwal** menyimpan tanpa mengirim (boleh sebagian kosong). **Konfirmasi Kirim** mewajibkan kurir dan resi, lalu menandai terkirim dengan tanggal hari itu. — ✅ aturan server (API-4c); formulir ⬜ (formulir menampilkan foto tiap barang untuk dicek ulang sebelum kirim; foto dicocokkan lewat nama produk, belum diuji)
 - **KIR-6** **Batal kirim** mengembalikan pesanan ke tab Perlu Dikirim. — ⬜
 
 **Label pengiriman** (10×15 cm)

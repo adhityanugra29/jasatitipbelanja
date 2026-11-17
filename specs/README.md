@@ -45,6 +45,7 @@ Berkas: yang diubah/dibuat
 | [04-pengiriman.md](04-pengiriman.md) | Pengiriman dan label |
 | [05-pengaturan.md](05-pengaturan.md) | Pengaturan toko dan data invoice |
 | [06-deploy.md](06-deploy.md) | Deploy di Vercel + MongoDB Atlas |
+| [07-pelanggan.md](07-pelanggan.md) | Menu Pelanggan di admin |
 | [keputusan.md](keputusan.md) | Catatan keputusan dan daftar yang masih terbuka |
 
 Tema tampilan (berlaku untuk toko dan admin): palet dari logo: pink `#F44D92` (tombol: `#D32F82`), tosca `#0BBDB6`, teks `#0E3B43`, latar `#FFF8FB`. Font judul Josefin Sans, teks Nunito.
