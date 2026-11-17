@@ -20,8 +20,10 @@ Format: tanggal, keputusan, alasan. Yang masih terbuka ada di bagian bawah.
 - **2026-11-03 — Penyimpanan dipindah ke MongoDB dan dideploy di Vercel.** Dilakukan pemilik proyek di luar sesi ini. *Dampak:* server lokal butuh `MONGODB_URI`; lihat API-8.
 - **2026-11-03 — Batas unggah dokumen diturunkan dari 5MB ke 3MB.** *Alasan:* batas isi permintaan Vercel ±4,5MB; file 5MB menjadi ±6,7MB setelah base64 dan akan gagal di Vercel.
 - **2026-11-03 — Cara kerja memakai Spec-Driven Development** (lihat `README.md`).
-- **2026-11-17 — Menu Pelanggan di admin diturunkan dari invoice; total belanja hanya dari invoice lunas.** *Alasan:* satu sumber data, tidak ada data pelanggan baru; permintaan pemilik toko.
+
+- **2026-11-17 — Menu Pelanggan di admin diturunkan dari invoice; total belanja hanya dari invoice lunas.** *Alasan:* satu sumber data, tidak ada data pelanggan baru; permintaan pemilik toko.
 - **2026-11-17 — Halaman Invoice punya dua tampilan, Daftar dan Gambar, pilihan diingat per browser.** Gambar menampilkan foto 2 barang teratas. *Alasan:* permintaan pemilik toko agar pengguna bisa memilih.
+- **2026-11-17 — Pesanan dicatat di sistem saat tombol "Pesan via WhatsApp" ditekan (menu Pesanan Masuk), diberi kode `PSN-XXXXXX`, dan dicocokkan dengan invoice.** Invoice tetap dibuat admin. Pesanan yang tidak diinvoice dibiarkan, dihapus manual. *Alasan:* admin perlu membandingkan isi chat WhatsApp dengan pesanan dan invoice. Spec: [08](08-pesanan-masuk.md).
 
 ## Terbuka (belum diputuskan)
 
@@ -29,6 +31,6 @@ Format: tanggal, keputusan, alasan. Yang masih terbuka ada di bagian bawah.
 - **Hot Item otomatis** dari penjualan (misalnya 3 barang paling sering masuk invoice).
 - **Flash Sale** dengan harga coret dan hitung mundur (sekarang hanya label).
 - **Stok berkurang otomatis** saat invoice dibayar (sekarang diatur manual oleh admin).
-- **Pesanan WhatsApp tercatat otomatis** sebagai invoice (butuh perlindungan spam).
+- **Pesanan WhatsApp menjadi invoice otomatis** (sekarang hanya tercatat sebagai Pesanan Masuk; admin yang membuat invoice).
 - **DP/cicilan**: kalau dibutuhkan, perlu aturan kapan boleh dikirim.
 - Label: kurir, resi, dan data pengirim.

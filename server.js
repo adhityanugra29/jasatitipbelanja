@@ -50,6 +50,23 @@ const handler = async (req, res) => {
     if (req.method === "GET" && url.startsWith("/uploads/")) return getFile(res, "uploads", path.basename(url));
     if (req.method === "GET" && url === "/api/data") return send(res, 200, await kv("data"));
 
+    // PSM-1..3: satu-satunya tulis publik, jadi dibatasi ketat. Nama dan harga selalu dari katalog, bukan dari klien.
+    if (req.method === "POST" && url === "/api/inbox") {
+      const d = await body(req, 2e4);
+      if (!/^PSN-[A-Z0-9]{6}$/.test(d.code)) return send(res, 400, { error: "Kode pesanan tidak valid" });
+      const cat = (await kv("data")).products;
+      const items = (Array.isArray(d.items) ? d.items : []).slice(0, 50).map(i => {
+        const p = cat.find(p => p.id === String(i.id));
+        return p && { id: p.id, name: p.name, price: p.price, qty: Math.min(999, Math.floor(Number(i.qty)) || 0) };
+      }).filter(i => i && i.qty >= 1);
+      if (!items.length) return send(res, 400, { error: "Tidak ada barang yang valid" });
+      const col = (await db()).collection("inbox");
+      await col.replaceOne({ _id: d.code }, { items, created: new Date().toISOString() }, { upsert: true }); // kode sama = timpa, bukan ganda
+      const old = await col.find().sort({ created: -1 }).skip(500).toArray();
+      if (old.length) await col.deleteMany({ _id: { $in: old.map(x => x._id) } });
+      return send(res, 200, { ok: true });
+    }
+
     if (url.startsWith("/api/") && !authed(req)) return send(res, 401, { error: "Password salah" });
     if (req.method === "GET" && url === "/api/check") return send(res, 200, { ok: true });
 
@@ -63,6 +80,13 @@ const handler = async (req, res) => {
       const name = `${crypto.randomUUID()}.${m[1] === "application/pdf" ? "pdf" : m[1].slice(6).replace("jpeg", "jpg")}`;
       await putFile("docs", name, buf);
       return send(res, 200, { file: name });
+    }
+    if (req.method === "GET" && url === "/api/inbox") return send(res, 200, (await (await db()).collection("inbox").find().sort({ created: -1 }).limit(500).toArray()).map(({ _id, ...r }) => ({ code: _id, ...r })));
+    if (req.method === "DELETE" && url.startsWith("/api/inbox/")) { // PSM-5: hanya pesanan yang belum punya invoice
+      const code = path.basename(url);
+      if ((await kv("orders")).some(o => o.pesananKode === code)) return send(res, 400, { error: "Pesanan ini sudah punya invoice" });
+      await (await db()).collection("inbox").deleteOne({ _id: code });
+      return send(res, 200, { ok: true });
     }
     if (req.method === "GET" && url === "/api/orders") return send(res, 200, await kv("orders"));
     if (req.method === "GET" && url === "/api/settings") return send(res, 200, { ...await kv("settings"), ...BANK });
@@ -87,8 +111,11 @@ const handler = async (req, res) => {
           items, shipping, total: items.reduce((s, i) => s + i.qty * i.price - i.discount, 0) + shipping, // total selalu dihitung server
           courier: t(o.courier, 40), resi: t(o.resi, 40), shipDate: date(o.shipDate), created: date(o.created), shipped: date(o.shipped),
           proof: /^[\w-]+\.(pdf|jpg|png|webp)$/.test(o.proof) ? o.proof : "", paidAt: date(o.paidAt),
+          pesananKode: /^PSN-[A-Z0-9]{6}$/.test(o.pesananKode) ? o.pesananKode : "",
         };
       });
+      const kodes = out.map(o => o.pesananKode).filter(Boolean); // PSM-6: satu pesanan, satu invoice
+      if (new Set(kodes).size !== kodes.length) return send(res, 400, { error: "Satu pesanan hanya boleh punya satu invoice" });
       if (out.some(o => !o.items.length)) return send(res, 400, { error: "Isi barang pada invoice wajib diisi" });
       if (out.some(o => o.items.some(i => !i.name || i.qty < 1 || i.price < 1 || i.discount > i.qty * i.price))) return send(res, 400, { error: "Setiap barang harus punya nama, jumlah, dan harga; diskon tidak boleh melebihi harga" });
       if (out.some(o => !/^08\d{8,12}$/.test(o.phone))) return send(res, 400, { error: "Nomor HP penerima harus nomor HP Indonesia (diawali 08)" });

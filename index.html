@@ -10,68 +10,71 @@
   :root { --pink:#F44D92; --pink-d:#D32F82; --pink-soft:#FFE3EF; --teal:#0BBDB6; --teal-d:#078A85; --teal-soft:#D9F4F2; --ink:#0E3B43; --bg:#FFF8FB; --line:#F3D5E3; --side:#0E3B43; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   button, label, a { touch-action:manipulation; }
-  body { margin:0; font:17px/1.4 "Plus Jakarta Sans",system-ui,sans-serif; color:var(--ink); background:var(--bg); padding:16px 16px calc(100px + env(safe-area-inset-bottom)); }
+  body { margin:0; font:16px/1.45 "Plus Jakarta Sans",system-ui,sans-serif; color:var(--ink); background:var(--bg); padding:0 16px calc(104px + env(safe-area-inset-bottom)); }
   .wrap { max-width:920px; margin:0 auto; }
   h1, h3 { font-family:"Plus Jakarta Sans",sans-serif; }
-  .head { text-align:center; }
-  .head img { height:110px; }
-  h1 { margin:4px 0 16px; font-weight:800; font-size:2.2rem; }
-  .notice { background:var(--teal-soft); border-radius:10px; padding:14px; text-align:center; font-weight:700; margin-bottom:16px; }
-  .tools { display:flex; gap:10px; position:sticky; top:0; z-index:5; background:var(--bg); padding:8px 0; } /* pencarian tetap terlihat saat menggulir */
-  .search { flex:1; display:flex; align-items:center; gap:8px; background:#fff; border:1.5px solid var(--line); border-radius:10px; padding:0 12px; }
+  /* kepala: pita pink lembut dengan logo di lingkaran putih */
+  .head { text-align:center; margin:0 -16px 8px; padding:22px 16px 26px; background:linear-gradient(180deg,var(--pink-soft),var(--bg)); }
+  .head img { height:96px; width:96px; padding:4px; border-radius:50%; background:#fff; box-shadow:0 6px 20px #F44D9230; }
+  h1 { margin:10px 0 0; font-weight:800; font-size:2rem; letter-spacing:-.02em; }
+  h1::after { content:""; display:block; width:48px; height:4px; margin:8px auto 0; border-radius:4px; background:linear-gradient(90deg,var(--pink),var(--teal)); }
+  .notice { background:var(--teal-soft); color:var(--teal-d); border-radius:14px; padding:12px 14px; text-align:center; font-weight:700; margin:8px 0 12px; }
+  .tools { display:flex; gap:10px; position:sticky; top:0; z-index:5; background:var(--bg); padding:10px 0; } /* pencarian tetap terlihat saat menggulir */
+  .search { flex:1; display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid var(--line); border-radius:99px; padding:0 18px; color:var(--pink-d); box-shadow:0 2px 10px #0E3B430D; }
+  .search:focus-within { border-color:var(--pink); box-shadow:0 0 0 4px #F44D9222; }
   .search input { flex:1; min-width:0; padding:14px 0; font:inherit; font-weight:500; color:var(--ink); border:0; outline:0; background:none; }
-  .ibtn { position:relative; width:56px; flex:none; background:#fff; border:1.5px solid var(--line); border-radius:10px; color:var(--ink); display:grid; place-items:center; cursor:pointer; }
+  .ibtn { position:relative; width:52px; flex:none; background:#fff; border:1.5px solid var(--line); border-radius:99px; color:var(--ink); display:grid; place-items:center; cursor:pointer; box-shadow:0 2px 10px #0E3B430D; }
   .ibtn svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-  .badge { position:absolute; top:-8px; right:-8px; min-width:22px; height:22px; border-radius:99px; background:var(--pink-d); color:#fff; font-size:.8rem; font-weight:700; display:grid; place-items:center; }
-  .view { display:flex; justify-content:flex-end; align-items:center; gap:8px; margin:12px 0; font-size:.9rem; }
-  .view .ibtn { width:46px; height:42px; }
-  .view .ibtn.on { background:var(--pink-d); border-color:var(--pink-d); color:#fff; }
-  .view svg { fill:currentColor; stroke:none; width:20px; height:20px; }
-  .grid { --cols:2; display:grid; grid-template-columns:repeat(var(--cols),1fr); gap:14px; }
-  .card { position:relative; background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:14px; display:flex; flex-direction:column; box-shadow:0 4px 14px #0E3B4314; min-width:0; }
-  .card img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; margin-bottom:8px; }
-  .tagp { position:absolute; top:22px; left:22px; z-index:1; padding:4px 10px; border-radius:99px; font-size:.78rem; font-weight:800; color:#fff; box-shadow:0 2px 6px #0003; }
+  .badge { position:absolute; top:-6px; right:-6px; min-width:22px; height:22px; border-radius:99px; background:var(--pink-d); color:#fff; font-size:.8rem; font-weight:700; display:grid; place-items:center; border:2px solid var(--bg); }
+  .view { display:flex; justify-content:flex-end; align-items:center; gap:10px; margin:6px 0 14px; font-size:.85rem; font-weight:600; opacity:.9; }
+  .seg { display:flex; padding:4px; gap:2px; background:var(--pink-soft); border-radius:99px; }
+  .view .ibtn { width:40px; height:34px; border:0; background:none; box-shadow:none; font:inherit; font-weight:700; }
+  .view .ibtn.on { background:var(--pink-d); color:#fff; box-shadow:0 2px 8px #D32F8250; }
+  .grid { --cols:2; display:grid; grid-template-columns:repeat(var(--cols),1fr); gap:16px; }
+  .card { position:relative; background:#fff; border-radius:20px; padding:10px 10px 14px; display:flex; flex-direction:column; box-shadow:0 6px 20px #0E3B431A; min-width:0; }
+  .card img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:14px; margin-bottom:10px; }
+  .tagp { position:absolute; top:18px; left:18px; z-index:1; padding:4px 11px; border-radius:99px; font-size:.75rem; font-weight:800; color:#fff; box-shadow:0 2px 8px #0003; }
   .tagp.new { background:var(--teal-d); }
   .tagp.hot { background:#E23B2E; }
   .tagp.flash { background:#FFD23F; color:var(--ink); }
-  .nopic { aspect-ratio:1; border-radius:8px; margin-bottom:8px; background:var(--pink-soft); display:grid; place-items:center; font-size:3rem; }
-  .card h3 { overflow-wrap:anywhere; margin:0 0 2px; font-weight:700; font-size:1.05rem; }
-  .sub { font-size:.9rem; font-weight:400; opacity:.75; }
-  .price { font-weight:700; font-size:1.15rem; margin:6px 0 2px; color:var(--pink-d); }
-  .stock { font-size:.9rem; font-weight:700; }
+  .nopic { aspect-ratio:1; border-radius:14px; margin-bottom:10px; background:linear-gradient(135deg,var(--pink-soft),var(--teal-soft)); display:grid; place-items:center; font-size:3rem; }
+  .card h3, .card .sub, .card .price, .card .stock, .card .act { margin-left:6px; margin-right:6px; }
+  .card h3 { overflow-wrap:anywhere; margin-top:0; margin-bottom:2px; font-weight:700; font-size:1rem; line-height:1.3; }
+  .sub { font-size:.85rem; font-weight:400; opacity:.7; }
+  .price { font-weight:800; font-size:1.2rem; margin-top:8px; margin-bottom:2px; color:var(--pink-d); }
+  .stock { display:inline-block; align-self:flex-start; font-size:.75rem; font-weight:700; padding:2px 10px; border-radius:99px; background:var(--teal-soft); color:var(--teal-d); }
   .act { display:flex; margin-top:auto; padding-top:12px; }
-  .step { flex:1; display:flex; align-items:center; justify-content:space-between; }
-  .step b { font-size:1.15rem; }
+  .step { flex:1; display:flex; align-items:center; justify-content:space-between; background:var(--pink-soft); border-radius:99px; padding:3px; }
+  .step b { font-size:1.1rem; }
   .step button:disabled { opacity:.35; cursor:not-allowed; }
-  .step button, .row button { width:44px; height:44px; border-radius:8px; border:1.5px solid var(--line); background:var(--pink-soft); color:var(--ink); font:inherit; font-size:1.2rem; cursor:pointer; }
-  .cartbtn { flex:1; height:48px; border:0; border-radius:8px; background:var(--pink-d); color:#fff; display:flex; align-items:center; justify-content:center; gap:8px; font:inherit; font-weight:600; cursor:pointer; }
-  .cartbtn:disabled { opacity:.35; cursor:not-allowed; }
-  .cartbtn svg { width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .step button, .row button { width:42px; height:42px; border-radius:50%; border:0; background:#fff; color:var(--pink-d); font:inherit; font-size:1.25rem; font-weight:700; cursor:pointer; box-shadow:0 1px 4px #0E3B4322; }
+  .cartbtn { flex:1; height:48px; border:0; border-radius:99px; background:var(--pink-d); color:#fff; display:flex; align-items:center; justify-content:center; gap:8px; font:inherit; font-weight:700; cursor:pointer; }
+  .cartbtn:disabled { background:#E7DDE2; color:#7A6A72; cursor:not-allowed; }
+  .cartbtn svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
   #pager { text-align:center; margin:20px 0 0; font-weight:700; opacity:.6; }
   .empty { padding:24px; text-align:center; grid-column:1/-1; }
-  #fab { position:fixed; left:16px; right:16px; bottom:calc(16px + env(safe-area-inset-bottom)); max-width:888px; margin:0 auto; padding:16px; border:0; border-radius:14px; background:var(--pink-d); color:#fff; font:inherit; font-size:1.1rem; font-weight:700; box-shadow:0 4px 12px #0004; cursor:pointer; }
-  dialog { width:min(520px,94vw); border:0; border-radius:16px; padding:16px; background:var(--bg); color:var(--ink); font-family:inherit; }
+  #fab { position:fixed; left:16px; right:16px; bottom:calc(16px + env(safe-area-inset-bottom)); max-width:888px; margin:0 auto; padding:16px; border:0; border-radius:99px; background:linear-gradient(90deg,var(--pink-d),var(--pink)); color:#fff; font:inherit; font-size:1.05rem; font-weight:700; box-shadow:0 8px 24px #D32F8260; cursor:pointer; }
+  dialog { width:min(520px,94vw); border:0; border-radius:24px; padding:20px; background:var(--bg); color:var(--ink); font-family:inherit; }
   dialog::backdrop { background:#0E3B4399; }
-  dialog h2 { margin-top:0; font-family:"Plus Jakarta Sans",sans-serif; }
+  dialog h2 { margin-top:0; font-family:"Plus Jakarta Sans",sans-serif; font-weight:800; }
   .row { display:flex; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid var(--line); }
   .row span:first-child { flex:1; }
-  .total { display:flex; justify-content:space-between; font-weight:700; padding:12px 0; }
-  .send, .done { display:block; width:100%; text-align:center; padding:14px; border:0; border-radius:12px; background:var(--pink-d); color:#fff; font:inherit; font-weight:700; text-decoration:none; cursor:pointer; }
+  .total { display:flex; justify-content:space-between; font-weight:800; padding:14px 0; }
+  .send, .done { display:block; width:100%; text-align:center; padding:15px; border:0; border-radius:99px; background:var(--pink-d); color:#fff; font:inherit; font-weight:700; text-decoration:none; cursor:pointer; }
   .close { width:100%; margin-top:8px; padding:12px; border:0; background:none; font:inherit; color:var(--ink); cursor:pointer; }
   label.chk { display:flex; font-weight:500; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
   label.chk input { width:22px; height:22px; accent-color:var(--pink-d); }
   /* layar HP */
   @media (max-width:600px) {
     body { padding-left:12px; padding-right:12px; }
-    .head img { height:84px; }
-    h1 { font-size:1.8rem; margin-bottom:12px; }
+    .head { margin:0 -12px 8px; padding:18px 12px 22px; }
+    .head img { height:84px; width:84px; }
+    h1 { font-size:1.7rem; }
     [data-cols="3"] { display:none; } /* 3 kolom terlalu sempit di HP */
-    .grid { gap:10px; }
-    .card { padding:10px; }
-    .tagp { top:18px; left:18px; }
+    .grid { gap:12px; }
     #fab { left:12px; right:12px; }
     /* jendela keranjang & filter muncul dari bawah, mudah dijangkau ibu jari */
-    dialog { margin:auto 0 0; width:100%; max-width:100%; max-height:88vh; overflow:auto; border-radius:18px 18px 0 0; padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
+    dialog { margin:auto 0 0; width:100%; max-width:100%; max-height:88vh; overflow:auto; border-radius:24px 24px 0 0; padding-bottom:calc(20px + env(safe-area-inset-bottom)); }
   }
 </style>
 </head>
@@ -94,10 +97,12 @@
     </button>
   </div>
 
-  <div class="view">Tampilan:
-    <button class="ibtn" data-cols="1" aria-label="1 kolom">1</button>
-    <button class="ibtn on" data-cols="2" aria-label="2 kolom">2</button>
-    <button class="ibtn" data-cols="3" aria-label="3 kolom">3</button>
+  <div class="view">Tampilan
+    <div class="seg">
+      <button class="ibtn" data-cols="1" aria-label="1 kolom">1</button>
+      <button class="ibtn on" data-cols="2" aria-label="2 kolom">2</button>
+      <button class="ibtn" data-cols="3" aria-label="3 kolom">3</button>
+    </div>
   </div>
 
   <main class="grid" id="grid"></main>
@@ -129,6 +134,8 @@ const rp = n => "Rp" + n.toLocaleString("id-ID");
 const CART = `<svg viewBox="0 0 24 24"><path d="M2 3h3l2.5 12h11L21 7H6"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg>`;
 const PER = 12;                   // barang yang dimuat setiap kali menggulir ke bawah
 let page = 1;
+// PSM-1: kode pesanan baru setiap halaman dimuat; pesan WhatsApp memuat kode ini, server menyimpan isi keranjangnya
+const CODE = "PSN-" + [...crypto.getRandomValues(new Uint8Array(6))].map(n => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[n % 32]).join("");
 const sel = new Set();             // kategori terpilih
 let cart = {};                    // cart: {id: jumlah}
 try { cart = JSON.parse(localStorage.cart || "{}"); } catch {}
@@ -190,11 +197,15 @@ function renderCart() {
     || "<p>Belum ada barang.</p>";
   $("total").textContent = rp(total);
   const msg = "Halo, saya mau pesan:\n" + rows.map(p => `- ${p.name} x${cart[p.id]} = ${rp(cart[p.id] * p.price)}`).join("\n")
-    + `\n\nTotal: ${rp(total)}\n\nNama:\nAlamat:`;
+    + `\n\nTotal: ${rp(total)}\nKode pesanan: ${CODE}\n\nNama:\nAlamat:`;
   $("send").href = `https://wa.me/${WA}?text=${encodeURIComponent(msg)}`;
   $("send").style.display = count ? "block" : "none";
   document.querySelectorAll(".act[data-id]").forEach(el => { const p = PRODUCTS.find(p => p.id === el.dataset.id); if (p) el.innerHTML = actHtml(p); });
 }
+
+// PSM-1: catat pesanan ke server; gagal pun WhatsApp tetap terbuka (tautan tidak dihentikan)
+$("send").addEventListener("click", () => fetch("/api/inbox", { method: "POST", keepalive: true, headers: { "content-type": "application/json" },
+  body: JSON.stringify({ code: CODE, items: Object.entries(cart).map(([id, qty]) => ({ id, qty })) }) }).catch(() => {}));
 
 document.addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;

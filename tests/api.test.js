@@ -136,6 +136,44 @@ const rejected = async (fn) => { const r = await fn(); assert.strictEqual(r.stat
     } finally { await call("PUT", "/api/settings", before); }
   });
 
-  console.log(failed ? `\n${failed} tes GAGAL` : "\nSemua tes lolos");
+  // ---------- PSM pesanan masuk (specs/08-pesanan-masuk.md)
+  await test("PSM", "pesanan masuk: publik hanya menulis; harga dari katalog; kode ganda ditimpa; terkunci bila sudah diinvoice", async () => {
+    const data = (await call("GET", "/api/data", undefined, null)).body, orders = (await call("GET", "/api/orders")).body;
+    const pub = (b) => call("POST", "/api/inbox", b, null), codes = ["PSN-UJI001", "PSN-UJI002"];
+    const list = async () => (await call("GET", "/api/inbox")).body.filter(x => codes.includes(x.code));
+    try {
+      await call("PUT", "/api/data", { ...data, products: [{ id: "uji-p", name: "Barang Uji", price: 5000, cat: "Uji" }] });
+      // PSM-1/2: tanpa login boleh; nama dan harga kiriman klien diabaikan; barang tak dikenal dibuang; kode sama = satu pesanan
+      const body = { code: codes[0], items: [{ id: "uji-p", qty: 2, name: "Palsu", price: 1 }, { id: "tidak-ada", qty: 1 }] };
+      assert.strictEqual((await pub(body)).status, 200);
+      assert.strictEqual((await pub(body)).status, 200);
+      const [r] = await list();
+      assert.strictEqual((await list()).length, 1);
+      assert.deepStrictEqual(r.items, [{ id: "uji-p", name: "Barang Uji", price: 5000, qty: 2 }]);
+      assert.strictEqual((await pub({ code: codes[1], items: [{ id: "tidak-ada", qty: 1 }] })).status, 400); // tanpa barang valid
+      // PSM-3: kode salah format, qty dibatasi, isi terlalu besar
+      assert.strictEqual((await pub({ code: "psn-abc", items: body.items })).status, 400);
+      assert.strictEqual((await pub({ code: codes[1], items: [{ id: "uji-p", qty: 5000 }] })).status, 200);
+      assert.strictEqual((await list()).find(x => x.code === codes[1]).items[0].qty, 999);
+      assert.notStrictEqual(await pub({ code: codes[1], items: body.items, x: "a".repeat(3e4) }).then(r => r.status, () => "putus"), 200); // server memutus sambungan
+      // PSM-4: baca dan hapus butuh login
+      assert.strictEqual((await call("GET", "/api/inbox", undefined, null)).status, 401);
+      assert.strictEqual((await call("DELETE", "/api/inbox/" + codes[0], undefined, null)).status, 401);
+      // PSM-6: invoice menyimpan kode; pesanan berinvoice tak bisa dihapus; satu pesanan satu invoice
+      const inv = (id) => { const o = valid(); o.id = id; o.invoice = id; o.pesananKode = codes[0]; return o; };
+      assert.strictEqual((await call("PUT", "/api/orders", [inv("uji-a")])).status, 200);
+      assert.strictEqual((await call("GET", "/api/orders")).body[0].pesananKode, codes[0]);
+      assert.strictEqual((await call("DELETE", "/api/inbox/" + codes[0])).status, 400);
+      await rejected(() => call("PUT", "/api/orders", [inv("uji-a"), inv("uji-b")]));
+      await call("PUT", "/api/orders", []);
+      assert.strictEqual((await call("DELETE", "/api/inbox/" + codes[0])).status, 200);
+      assert.strictEqual((await list()).length, 1);
+    } finally {
+      await call("PUT", "/api/data", data); await call("PUT", "/api/orders", orders);
+      for (const c of codes) await call("DELETE", "/api/inbox/" + c);
+    }
+  });
+
+  console.log(failed ?`\n${failed} tes GAGAL` : "\nSemua tes lolos");
   process.exit(failed ? 1 : 0);
 })();

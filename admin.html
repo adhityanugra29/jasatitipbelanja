@@ -155,6 +155,17 @@
     .ivrow > .oact .b, .ivfoot .oact { flex:1; }
     .ivfoot .oact { width:100%; }
   }
+  /* Pesanan Masuk (PSM-*) dan perbandingan dengan invoice */
+  #v-pesanan .ofil { grid-template-columns:1fr; }
+  .psrow { grid-template-columns:170px 1fr 150px auto; }
+  .cmp { margin-top:12px; border:1.5px solid var(--line); border-radius:12px; background:#fff; padding:10px 12px; font-size:.9rem; }
+  .cmp table { width:100%; border-collapse:collapse; }
+  .cmp th { font-size:.7rem; letter-spacing:.08em; text-align:left; padding:4px 6px; }
+  .cmp td { padding:5px 6px; border-top:1px solid #FDEBF3; }
+  .cmp td:nth-child(2), .cmp td:nth-child(3), .cmp th:nth-child(2), .cmp th:nth-child(3) { text-align:center; width:64px; }
+  .cmp .bad td:last-child { color:#c00; font-weight:700; }
+  .cmp .good td:last-child { color:#1c6b32; font-weight:700; }
+  @media (max-width:800px) { .psrow { grid-template-columns:1fr auto; } .psrow > :nth-child(2) { grid-column:1/-1; order:3; } .psrow > .oact { grid-column:1/-1; order:4; } .psrow > .oact .b { flex:1; } }
   #pl-table table { min-width:0; }
   #pl-table .linkbtn2 { text-align:left; }
   .otable a.wa { display:inline-block; background:#1ea952; color:#fff; border-radius:10px; padding:9px 14px; font-size:.9rem; text-decoration:none; white-space:nowrap; }
@@ -283,6 +294,8 @@
     <div class="grp">JUALAN</div>
     <button class="nav on" data-view="katalog">
       <svg viewBox="0 0 24 24"><path d="M3 9l1.5-5h15L21 9M3 9h18M3 9v11h18V9M9 20v-6h6v6"/></svg>Katalog <span class="tag" id="tcount"></span></button>
+    <button class="nav" data-view="pesanan">
+      <svg viewBox="0 0 24 24"><path d="M3 5h18v11H8l-5 4zM8 9h8M8 12h5"/></svg>Pesanan Masuk <span class="tag" id="pcount"></span></button>
     <button class="nav" data-view="invoice">
       <svg viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6"/></svg>Invoice <span class="tag" id="icount"></span></button>
     <button class="nav" data-view="pengiriman">
@@ -310,6 +323,14 @@
       <div class="pagehead"><div><h2>Tambah Produk</h2><small>Unggah satu atau banyak foto sekaligus, lalu isi data tiap produk satu per satu</small></div><button class="b" id="wback">← Katalog</button></div>
       <div class="steps" id="steps"></div>
       <div id="wz"></div>
+    </section>
+    <section id="v-pesanan" hidden>
+      <div class="pagehead"><h2>Pesanan Masuk</h2></div>
+      <div class="warn">Pesanan tercatat saat pelanggan menekan <b>Pesan via WhatsApp</b>. Cocokkan <b>kode pesanan</b> di chat dengan daftar ini, lalu <b>Buat Invoice</b>. Pesanan yang tidak dibalas pelanggan tetap Baru sampai Anda hapus.</div>
+      <div class="stats" id="ps-stats"></div>
+      <div class="otabs" id="ps-tabs"></div>
+      <div class="ofil"><input id="ps-q" placeholder="Cari kode pesanan atau barang"></div>
+      <div id="ps-list"></div>
     </section>
     <section id="v-invoice" hidden>
       <div class="pagehead"><h2>Invoice</h2><button class="b dark" id="iadd">+ Buat Invoice</button></div>
@@ -378,6 +399,7 @@
   <div class="lnh"><span>PRODUK</span><span>KETERANGAN (opsional)</span><span>QTY</span><span>HARGA (Rp)</span><span>DISKON (Rp)</span><span></span></div>
   <div id="i-lines"></div>
   <button type="button" class="b" id="iaddline">+ Tambah barang</button>
+  <div id="i-cmp" class="cmp" hidden></div>
   <label style="display:block;margin-top:12px">Ongkos kirim (Rp)</label><input id="i-shipping" type="number" min="0" inputmode="numeric">
   <div class="isum" id="i-sum"></div>
   <div id="ierr" style="color:#c00;margin:8px 0"></div>
@@ -490,7 +512,7 @@ $("go").onclick = async () => {
   try {
     await api("GET", "/api/check");
     data = await (await fetch("/api/data")).json();
-    orders = await api("GET", "/api/orders"); settings = await api("GET", "/api/settings"); fillCfg(); renderAll();
+    orders = await api("GET", "/api/orders"); inbox = await api("GET", "/api/inbox"); settings = await api("GET", "/api/settings"); fillCfg(); renderAll();
     $("login").hidden = true; $("app").hidden = false; render();
   } catch (e) { $("err").textContent = e.message; }
   finally { $("go").disabled = false; $("loading").hidden = true; }
@@ -502,11 +524,12 @@ $("scrim").onclick = () => $("side").classList.remove("open"); // ketuk area gel
 
 // "bulk" = halaman Tambah Produk; menu Katalog tetap menyala saat di sana
 function showView(v) {
-  for (const x of ["katalog", "bulk", "invoice", "pengiriman", "pelanggan", "pengaturan"]) $("v-" + x).hidden = x !== v;
+  for (const x of ["katalog", "bulk", "pesanan", "invoice", "pengiriman", "pelanggan", "pengaturan"]) $("v-" + x).hidden = x !== v;
   document.querySelectorAll("[data-view]").forEach(x => x.classList.toggle("on", x.dataset.view === (v === "bulk" ? "katalog" : v)));
   $("side").classList.remove("open"); say("");
   if (v === "bulk") wz();
-  if (v === "invoice" || v === "pengiriman" || v === "pelanggan") renderAll();
+  if (v === "pesanan") api("GET", "/api/inbox").then(r => { inbox = r; renderInbox(); }).catch(e => say(e.message, true));
+  if (v === "invoice" || v === "pengiriman" || v === "pelanggan" || v === "pesanan") renderAll();
 }
 document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => showView(b.dataset.view));
 $("wback").onclick = () => showView("katalog");
@@ -687,7 +710,7 @@ const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
 const dfmt = d => d ? new Date(d + "T00:00").toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : "-";
 const rpf = n => "Rp" + (n || 0).toLocaleString("id-ID");
 const newId = () => Date.now() + "-" + Math.random().toString(36).slice(2, 6);
-const renderAll = () => { renderInvoices(); renderOrders(); renderCustomers(); };
+const renderAll = () => { renderInvoices(); renderOrders(); renderCustomers(); renderInbox(); };
 // daftar bertambah sendiri ke bawah saat penanda di dasar daftar yang sedang terlihat hampir muncul
 function autoMore() {
   const near = el => !el.hidden && el.offsetParent !== null && el.getBoundingClientRect().top < innerHeight + 300;
@@ -793,6 +816,54 @@ $("pl-table").addEventListener("click", e => {
   if (o) openInvoiceView(o);
 });
 
+// ---- Pesanan Masuk (PSM-*): dicatat saat pelanggan menekan tombol WhatsApp. "Sudah diinvoice" diturunkan dari invoice (pesananKode), tidak disimpan terpisah.
+let inbox = [], pTab = "new", pFrom = null;
+const invoiceOf = p => orders.find(o => o.pesananKode === p.code);
+const dtime = d => new Date(d).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+// PSM-7: dibandingkan per nama barang (qty dijumlahkan); harga sengaja tidak dibandingkan
+function compare(pItems, iItems) {
+  const k = n => String(n || "").trim().toLowerCase();
+  const sum = a => a.filter(i => k(i.name)).reduce((m, i) => m.set(k(i.name), { name: i.name, qty: (m.get(k(i.name))?.qty || 0) + num(i.qty) }), new Map());
+  const P = sum(pItems), I = sum(iItems);
+  return [...new Set([...P.keys(), ...I.keys()])].map(x => { const p = P.get(x), i = I.get(x);
+    return { name: (p || i).name, p: p?.qty || 0, i: i?.qty || 0, st: !i ? "Tidak ada di invoice" : !p ? "Tambahan, tidak ada di pesanan" : p.qty !== i.qty ? "Jumlah beda" : "" }; });
+}
+function renderCmp() {
+  const code = cur?.pesananKode || pFrom?.code, p = code && inbox.find(x => x.code === code);
+  $("i-cmp").hidden = !p; if (!p) return;
+  const rows = compare(p.items, lines), bad = rows.filter(r => r.st).length;
+  $("i-cmp").innerHTML = `<b>Cek pesanan ${esc(code)}</b> · ${bad ? `<b style="color:#c00">${bad} selisih</b>` : `<b style="color:#1c6b32">semua cocok</b>`}
+    <table><thead><tr><th>BARANG<th>PESANAN<th>INVOICE<th></tr></thead><tbody>${rows.map(r => `<tr class="${r.st ? "bad" : "good"}"><td>${esc(r.name)}</td><td>${r.p}</td><td>${r.i}</td><td>${r.st ? "⚠ " + r.st : "✓ Sama"}</td></tr>`).join("")}</tbody></table>`;
+}
+function renderInbox() {
+  const nw = inbox.filter(p => !invoiceOf(p)), done = inbox.filter(p => invoiceOf(p));
+  $("pcount").textContent = nw.length;
+  $("ps-stats").innerHTML = stat("BARU (BELUM DIINVOICE)", nw.length, "#c00") + stat("SUDAH DIINVOICE", done.length, "#1c6b32");
+  $("ps-tabs").innerHTML = tabs(pTab, [["new", "Baru", nw.length], ["done", "Sudah Diinvoice", done.length]], "ptab");
+  const q = $("ps-q").value.toLowerCase();
+  const list = (pTab === "new" ? nw : done).filter(p => !q || (p.code + " " + p.items.map(i => i.name).join(" ")).toLowerCase().includes(q));
+  $("ps-list").innerHTML = !list.length ? `<p style="padding:24px;text-align:center">${inbox.length ? "Tidak ada pesanan yang cocok." : "Belum ada pesanan masuk. Pesanan muncul saat pelanggan menekan “Pesan via WhatsApp”."}</p>`
+    : `<div class="ivlist">${list.map(p => { const iv = invoiceOf(p), bad = iv && compare(p.items, iv.items).some(r => r.st), c = esc(p.code);
+      return `<div class="ivrow psrow ${iv ? "paid" : ""}">
+        <div><b>${c}</b><br><small>${dtime(p.created)}</small></div>
+        <div class="ivtx">${esc(p.items.map(i => `${i.name} ×${i.qty}`).join(", "))}</div>
+        <div class="ivtot"><b>${rpf(p.items.reduce((s, i) => s + i.qty * i.price, 0))}</b><br><small>${p.items.reduce((s, i) => s + i.qty, 0)} pcs</small></div>
+        <div class="oact">${iv ? `<button class="linkbtn2" data-pa="view" data-code="${c}">${esc(iv.invoice)}</button><span class="pay ${bad ? "belum" : "lunas"}">${bad ? "⚠ SELISIH" : "✓ COCOK"}</span>`
+          : `<button class="b dark" data-pa="make" data-code="${c}">Buat Invoice</button><button class="b del" data-pa="del" data-code="${c}">Hapus</button>`}</div></div>`; }).join("")}</div>`;
+}
+$("ps-q").oninput = renderInbox;
+$("v-pesanan").addEventListener("click", async e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.ptab) { pTab = b.dataset.ptab; return renderInbox(); }
+  const p = inbox.find(x => x.code === b.dataset.code); if (!p) return;
+  if (b.dataset.pa === "make") openInvoice(null, p);
+  if (b.dataset.pa === "view") openInvoiceView(invoiceOf(p));
+  if (b.dataset.pa === "del" && confirm(`Hapus pesanan ${p.code}?`)) {
+    try { await api("DELETE", "/api/inbox/" + p.code); inbox = inbox.filter(x => x !== p); } catch (err) { say(err.message, true); }
+    renderInbox();
+  }
+});
+
 function nextInvoice() {
   const p = "INV-" + today().slice(0, 7).replace("-", "");
   return p + String(orders.filter(o => o.invoice.startsWith(p)).length + 1).padStart(4, "0");
@@ -805,6 +876,7 @@ const num = v => Math.round(+v) || 0;
 function sumLines() {
   const c = calc(lines.map(l => ({ qty: num(l.qty), price: num(l.price), discount: num(l.discount) })), num($("i-shipping").value));
   $("i-sum").innerHTML = `<div><span>Total Belanja</span><b>${rpf(c.gross)}</b></div><div><span>Total Diskon</span><b>– ${rpf(c.disc)}</b></div><div><span>Ongkos Kirim</span><b>${rpf(c.ship)}</b></div><div class="g"><span>Total</span><b>${rpf(c.total)}</b></div>`;
+  renderCmp();
 }
 function renderLines() {
   $("i-lines").innerHTML = lines.map((l, n) => `<div class="ln">
@@ -827,12 +899,12 @@ $("idlg").addEventListener("click", e => {
   if (b.dataset.lrm !== undefined && lines.length > 1) { lines.splice(+b.dataset.lrm, 1); renderLines(); }
 });
 
-function openInvoice(o) {
-  cur = o || null;
+function openInvoice(o, from = null) { // from = pesanan masuk yang dijadikan invoice (PSM-6)
+  cur = o || null; pFrom = from;
   const v = o || { invoice: nextInvoice() };
   $("ititle").textContent = o ? "Edit Invoice" : "Buat Invoice";
   IF.forEach(f => { $("i-" + f).value = v[f] || ""; });
-  lines = o ? o.items.map(i => ({ ...i, discount: i.discount || "" })) : [blankLine()];
+  lines = o ? o.items.map(i => ({ ...i, discount: i.discount || "" })) : from ? from.items.map(i => ({ name: i.name, note: "", qty: i.qty, price: i.price || "", discount: "" })) : [blankLine()];
   renderLines();
   $("ierr").textContent = ""; $("idlg").showModal(); $("i-customer").focus();
 }
@@ -851,7 +923,7 @@ $("isave").onclick = async () => {
   if (bad) return fail("Setiap barang harus punya nama, jumlah, dan harga; diskon tidak boleh melebihi harga.");
   v.items = items; v.total = calc(items, v.shipping).total;
   if (cur) Object.assign(cur, v);
-  else orders.unshift({ id: newId(), created: today(), paidAt: "", proof: "", courier: "", resi: "", shipDate: "", shipped: "", ...v, invoice: v.invoice || nextInvoice() });
+  else orders.unshift({ id: newId(), created: today(), paidAt: "", proof: "", courier: "", resi: "", shipDate: "", shipped: "", pesananKode: pFrom?.code || "", ...v, invoice: v.invoice || nextInvoice() });
   $("idlg").close(); await saveOrders();
 };
 

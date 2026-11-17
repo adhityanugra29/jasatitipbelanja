@@ -10,7 +10,7 @@ Payment gateway. Akun admin lebih dari satu. Batas percobaan login.
 
 ## Kriteria
 
-Rute publik: `GET /`, `/admin`, `/assets/*`, `/uploads/*`, `GET /api/data`. Semua `/api/*` lain butuh header `x-admin`.
+Rute publik: `GET /`, `/admin`, `/assets/*`, `/uploads/*`, `GET /api/data`, `POST /api/inbox` (lihat [08](08-pesanan-masuk.md)). Semua `/api/*` lain butuh header `x-admin`.
 
 - **API-1** Endpoint privat menjawab 401 tanpa header `x-admin` atau dengan password salah. `GET /api/data` terbuka. — ✅ `tests/api.test.js`
 - **API-2** `PUT /api/data` membersihkan produk: nama ≤100, harga ≥0, kategori ≤40 (kosong → "Lainnya"), keterangan ≤100, badge hanya `new|hot|flash` atau kosong, stok `null` atau bilangan bulat ≥0, gambar hanya `/uploads/<nama>.(jpg|png|webp)`. Nomor WhatsApp hanya digit, pengumuman ≤200. — ✅ `tests/api.test.js`
@@ -19,6 +19,6 @@ Rute publik: `GET /`, `/admin`, `/assets/*`, `/uploads/*`, `GET /api/data`. Semu
 - **API-5** `POST /api/upload` menerima gambar JPEG/PNG/WEBP (data URL), menyimpannya sebagai `/uploads/<uuid>.<ext>`, dan hasilnya publik. Tipe lain ditolak. — ✅ `tests/api.test.js`
 - **API-6** `POST /api/doc` menerima PDF/JPEG/PNG/WEBP ≤**3MB** (batas isi permintaan Vercel, lihat DEP-3); PDF harus berawalan `%PDF-`. Dokumen **privat**: hanya `GET /api/doc/<nama>` dengan `x-admin`. — ✅ `tests/api.test.js` (API-6, API-6b)
 - **API-7** `GET /api/settings` menggabungkan pengaturan tersimpan dengan konstanta `BANK` di kode. `PUT /api/settings` hanya menyimpan `storeName, address, phone, email, npwp, admin` (≤200). Kunci rekening diabaikan. — ✅ `tests/api.test.js`
-- **API-8** Penyimpanan di MongoDB (`MONGODB_URI` wajib): koleksi `kv` (`data`, `orders`, `settings`) dan `files` (`uploads/…`, `docs/…`). Di Vercel lewat `api/index.js`. — ⬜ Tes di atas dijalankan dengan MongoDB tiruan di memori. Belum pernah dijalankan pada MongoDB sungguhan atau Vercel.
+- **API-8** Penyimpanan di MongoDB (`MONGODB_URI` wajib): koleksi `kv` (`data`, `orders`, `settings`), `inbox` (pesanan masuk), dan `files` (`uploads/…`, `docs/…`). Di Vercel lewat `api/index.js`. — ⬜ Tes di atas dijalankan dengan MongoDB tiruan di memori (`tests/mongo-mock.js`). Belum pernah dijalankan pada MongoDB sungguhan atau Vercel.
 - **API-9** Batas ukuran isi permintaan: 3MB, kecuali `/api/doc` 4,4MB (muat file 3MB setelah base64). — ✅ batas file di API-6b; batas isi permintaan ⬜
 - **API-10** Perbandingan password memakai SHA-256 dan `timingSafeEqual`. — ⬜ (hanya dibaca di kode)
