@@ -7,7 +7,7 @@
 <title>Admin Toko</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap">
 <style>
-  :root { --pink:#F44D92; --pink-d:#D32F82; --pink-soft:#FFE3EF; --teal:#0BBDB6; --teal-d:#078A85; --teal-soft:#D9F4F2; --ink:#0E3B43; --bg:#FFF8FB; --line:#F3D5E3; --side:#0E3B43; }
+  :root { --pink:#F44D92; --pink-d:#D32F82; --pink-soft:#FFE3EF; --teal:#0BBDB6; --teal-d:#078A85; --teal-soft:#D9F4F2; --ink:#0E3B43; --bg:#FFF8FB; --line:#F3D5E3; --side:#fff; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   button, label, a, summary { touch-action:manipulation; }
   body { margin:0; font:17px/1.4 "Plus Jakarta Sans",system-ui,sans-serif; color:var(--ink); background:var(--bg); }
@@ -23,15 +23,15 @@
   @keyframes spin { to { transform:rotate(360deg); } }
 
   /* sidebar */
-  #side { position:fixed; inset:0 auto 0 0; width:260px; background:var(--side); color:#D9EEF0; padding:20px 14px; display:flex; flex-direction:column; overflow-y:auto; z-index:20; transition:transform .2s; }
+  #side { position:fixed; inset:0 auto 0 0; width:260px; background:var(--side); color:var(--ink); border-right:1px solid var(--line); padding:20px 14px; display:flex; flex-direction:column; overflow-y:auto; z-index:20; transition:transform .2s; }
   #side .logo { display:block; width:150px; margin:0 auto 18px; }
-  .grp { font-size:.7rem; letter-spacing:.18em; font-weight:700; color:#8FB5B9; margin:18px 12px 8px; }
+  .grp { font-size:.7rem; letter-spacing:.18em; font-weight:700; color:#9A7F8C; margin:18px 12px 8px; }
   .nav { display:flex; align-items:center; gap:14px; width:100%; padding:11px 12px; margin-bottom:4px; border:1px solid transparent; border-radius:10px; background:none; color:inherit; font:inherit; font-weight:500; text-decoration:none; cursor:pointer; text-align:left; }
-  .nav:hover { background:#ffffff12; }
-  .nav.on { background:#F44D9238; border-color:var(--pink); color:#fff; font-weight:700; }
+  .nav:hover { background:var(--pink-soft); }
+  .nav.on { background:var(--pink-soft); border-color:var(--pink); color:var(--pink-d); font-weight:700; }
   .nav svg { width:20px; height:20px; flex:none; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .nav .tag { margin-left:auto; min-width:24px; padding:1px 7px; border-radius:4px; background:var(--teal); color:var(--ink); font-size:.8rem; font-weight:700; text-align:center; }
-  .nav .tag.out { background:none; border:1px solid #8FB5B9; color:#D9EEF0; font-weight:500; }
+  .nav .tag.out { background:none; border:1px solid var(--line); color:var(--ink); font-weight:500; }
   #side .gap { flex:1; }
 
   /* konten */
@@ -123,6 +123,38 @@
   .docbox input { margin:0; flex:1 1 200px; }
   .linkbtn2 { background:none; border:0; color:var(--ink); font:inherit; font-weight:700; text-decoration:underline; cursor:pointer; }
   .otable a { color:var(--ink); font-weight:700; }
+  /* halaman Invoice: tampilan Daftar (INV-11) dan Gambar (INV-12) */
+  #v-invoice .ofil { grid-template-columns:1fr auto auto; }
+  .vseg { display:flex; background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:3px; }
+  .vseg button { border:0; background:none; padding:8px 12px; border-radius:9px; font:inherit; font-weight:700; color:#5E8388; cursor:pointer; white-space:nowrap; }
+  .vseg button.on { background:var(--pink); color:#fff; }
+  .ivlist, .ivgrid { display:grid; gap:10px; }
+  .ivrow { background:#fff; border-radius:14px; box-shadow:0 4px 14px #0E3B4314; padding:12px 16px; display:grid; grid-template-columns:150px 1fr 150px auto; gap:14px; align-items:center; border-left:5px solid var(--pink); }
+  .ivrow.paid, .ivcard.paid { border-left-color:#0BBDB6; }
+  .ivrow .linkbtn2, .ivcard .linkbtn2 { text-align:left; padding:0; white-space:nowrap; }
+  .ivtx { font-size:.9rem; margin-top:2px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+  .ivtot { text-align:right; white-space:nowrap; }
+  .ivgrid { grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:14px; }
+  .ivcard { background:#fff; border-radius:18px; box-shadow:0 4px 14px #0E3B4314; overflow:hidden; display:flex; flex-direction:column; border-top:5px solid var(--pink); }
+  .ivcard.paid { border-top-color:#0BBDB6; }
+  .ivpics { position:relative; display:grid; grid-template-columns:1fr 1fr; gap:2px; height:130px; background:#FDEBF3; }
+  .ivpics.one { grid-template-columns:1fr; }
+  .ivpics img { width:100%; height:100%; object-fit:cover; }
+  .ivph { display:grid; place-items:center; font-size:2.6rem; background:#FDEBF3; }
+  .ivmore { position:absolute; right:8px; bottom:8px; background:#0E3B43cc; color:#fff; border-radius:99px; padding:2px 10px; font-size:.75rem; font-weight:700; }
+  .ivst { position:absolute; left:8px; top:8px; }
+  .ivbody { padding:12px 16px; flex:1; display:flex; flex-direction:column; gap:2px; }
+  .ivfoot { padding:10px 16px 14px; border-top:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .ivfoot > b { font-size:1.15rem; }
+  @media (max-width:800px) {
+    #v-invoice .ofil { grid-template-columns:1fr; }
+    .vseg button { flex:1; }
+    .ivrow { grid-template-columns:1fr auto; gap:6px 12px; }
+    .ivrow > :nth-child(2) { grid-column:1/-1; order:3; }
+    .ivrow > .oact { grid-column:1/-1; order:4; }
+    .ivrow > .oact .b, .ivfoot .oact { flex:1; }
+    .ivfoot .oact { width:100%; }
+  }
   #pl-table table { min-width:0; }
   #pl-table .linkbtn2 { text-align:left; }
   .otable a.wa { display:inline-block; background:#1ea952; color:#fff; border-radius:10px; padding:9px 14px; font-size:.9rem; text-decoration:none; white-space:nowrap; }
@@ -206,14 +238,14 @@
     #side { transform:translateX(-100%); }
     #side.open { transform:none; }
     #main { margin-left:0; padding:12px 16px 110px; }
-    #topbar { display:flex; align-items:center; gap:12px; padding:10px 16px; background:var(--side); position:sticky; top:0; z-index:10; }
+    #topbar { display:flex; align-items:center; gap:12px; padding:10px 16px; background:var(--side); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:10; }
     #topbar img { height:40px; }
     #topbar button { background:none; border:0; color:var(--pink); font-size:1.8rem; cursor:pointer; }
   }
   #scrim { display:none; }
   /* layar HP: tabel menjadi kartu, jendela muncul dari bawah */
   @media (max-width:800px) {
-    #side.open + #scrim { display:block; position:fixed; inset:0; z-index:15; background:#0E3B4380; }
+    #side.open + #scrim { display:block; position:fixed; inset:0; z-index:15; background:#0E3B4366; }
     .otable { background:none; box-shadow:none; overflow:visible; }
     .otable table, .otable tbody, .otable tr, .otable td { display:block; width:100%; min-width:0; }
     .otable thead { display:none; }
@@ -284,8 +316,9 @@
       <div class="warn">Invoice yang sudah dibayar <b>otomatis masuk ke Pengiriman</b>. Pesanan belum bisa dikirim sebelum bukti pembayaran diunggah.</div>
       <div class="stats" id="iv-stats"></div>
       <div class="otabs" id="iv-tabs"></div>
-      <div class="ofil"><input id="iv-q" placeholder="Cari pelanggan, no. invoice, kota"><select id="iv-m"></select></div>
-      <div class="otable" id="iv-table"></div>
+      <div class="ofil"><input id="iv-q" placeholder="Cari pelanggan, no. invoice, kota"><select id="iv-m"></select>
+        <div class="vseg"><button data-iview="list">☰ Daftar</button><button data-iview="img">▦ Gambar</button></div></div>
+      <div id="iv-table"></div>
       <nav id="iv-pager" class="pgr" hidden></nav>
     </section>
     <section id="v-pengiriman" hidden>
@@ -704,16 +737,30 @@ function renderInvoices() {
   $("iv-pager").hidden = iPage >= pages; $("iv-pager").textContent = "Memuat data lainnya…";
   requestAnimationFrame(autoMore);
   const btn = (a, o, label, cls = "sm") => `<button class="b ${cls}" data-ia="${a}" data-oid="${esc(o.id)}">${label}</button>`;
-  $("iv-table").innerHTML = list.length ? `<table><thead><tr><th>INVOICE<th>PELANGGAN<th>BARANG<th>TOTAL<th>STATUS<th></tr></thead><tbody>${
-    list.slice(0, iPage * OPER).map(o => `<tr>
-      <td><button class="linkbtn2" data-ia="view" data-oid="${esc(o.id)}">${esc(o.invoice)}</button><br><small>${dfmt(o.created)}</small></td>
-      <td><b>${esc(o.customer)}</b><br><small>${esc(o.city || "-")}</small></td>
-      <td class="items">${esc(itemsText(o))}</td>
-      <td><b>${rpf(o.total)}</b></td>
-      <td>${o.paidAt ? `<span class="pay lunas">LUNAS</span><br><small>${dfmt(o.paidAt)} · ${o.shipped ? "Sudah dikirim" : "Menunggu kirim"}</small>` : `<span class="pay belum">BELUM BAYAR</span>`}</td>
-      <td><div class="oact">${o.paidAt ? "" : btn("pay", o, "Tandai Sudah Bayar", "dark")}${dots("inv", o)}</div></td></tr>`).join("")}</tbody></table>`
-    : `<p style="padding:24px;text-align:center">${orders.length ? "Tidak ada invoice yang cocok." : "Belum ada invoice. Klik “+ Buat Invoice”."}</p>`;
+  document.querySelectorAll("[data-iview]").forEach(b => b.classList.toggle("on", b.dataset.iview === iView));
+  const no = o => `<button class="linkbtn2" data-ia="view" data-oid="${esc(o.id)}">${esc(o.invoice)}</button>`;
+  const status = o => o.paidAt ? `<span class="pay lunas">LUNAS</span>` : `<span class="pay belum">BELUM BAYAR</span>`;
+  const kirim = o => o.paidAt ? `${dfmt(o.paidAt)} · ${o.shipped ? "Sudah dikirim" : "Menunggu kirim"}` : "";
+  const acts = o => `<div class="oact">${o.paidAt ? "" : btn("pay", o, "Tandai Sudah Bayar", "dark")}${dots("inv", o)}</div>`;
+  const shown = list.slice(0, iPage * OPER);
+  // INV-11 Daftar / INV-12 Gambar
+  $("iv-table").innerHTML = !list.length ? `<p style="padding:24px;text-align:center">${orders.length ? "Tidak ada invoice yang cocok." : "Belum ada invoice. Klik “+ Buat Invoice”."}</p>`
+    : iView === "list" ? `<div class="ivlist">${shown.map(o => `<div class="ivrow ${o.paidAt ? "paid" : ""}">
+        <div>${no(o)}<br><small>${dfmt(o.created)}</small></div>
+        <div><b>${esc(o.customer)}</b> <small>· ${esc(o.city || "-")}</small><div class="ivtx">${esc(itemsText(o).replace(/\n/g, ", "))}</div></div>
+        <div class="ivtot"><b>${rpf(o.total)}</b><br>${status(o)}${o.paidAt ? `<br><small>${kirim(o)}</small>` : ""}</div>
+        ${acts(o)}</div>`).join("")}</div>`
+    : `<div class="ivgrid">${shown.map(o => `<div class="ivcard ${o.paidAt ? "paid" : ""}">
+        <div class="ivpics ${o.items.length < 2 ? "one" : ""}">${o.items.slice(0, 2).map(i => picOf(i) ? `<img src="${esc(picOf(i))}" alt="">` : `<div class="ivph">🛍️</div>`).join("")}${o.items.length > 2 ? `<span class="ivmore">+${o.items.length - 2} lainnya</span>` : ""}<span class="ivst">${status(o)}</span></div>
+        <div class="ivbody">${no(o)} <small>· ${dfmt(o.created)}</small><b>${esc(o.customer)}</b><small>${esc(o.city || "-")}${o.paidAt ? " · " + kirim(o) : ""}</small>
+          <div class="ivtx">${esc(o.items.slice(0, 2).map(i => `${i.name}${i.note ? ` (${i.note})` : ""} ×${i.qty}`).join(", "))}</div></div>
+        <div class="ivfoot"><b>${rpf(o.total)}</b>${acts(o)}</div></div>`).join("")}</div>`;
 }
+// foto barang dari katalog, dicocokkan lewat nama (pesanan tidak menyimpan id produk); dipakai juga oleh formulir pengiriman
+// shortcut: cocok hanya bila nama persis sama (nama, atau nama + catatan); tak cocok = ikon 🛍️
+const picOf = i => { const k = s => (s || "").trim().toLowerCase(), n = k(i.name), nn = k(`${i.name} ${i.note}`), nb = k(`${i.name} (${i.note})`);
+  return (data.products.find(p => [nn, nb, n].includes(k(p.name)) && p.img) || {}).img; };
+let iView = "list"; try { iView = localStorage.getItem("invView") === "img" ? "img" : "list"; } catch { } // INV-13
 
 // ---- Pelanggan (PLG-*): diturunkan dari invoice, satu pelanggan = satu nomor HP; tidak ada data baru disimpan
 let plOpen = "";
@@ -899,8 +946,7 @@ async function saveOrders() {
 function openShip(o) {
   cur = o;
   // shortcut: pesanan tidak menyimpan id produk, foto dicocokkan lewat nama (nama saja atau nama + catatan); tak cocok = ikon 🛍️
-  const pic = i => { const k = s => (s || "").trim().toLowerCase(), n = k(i.name), nn = k(`${i.name} ${i.note}`), nb = k(`${i.name} (${i.note})`);
-    return (data.products.find(p => [nn, nb, n].includes(k(p.name)) && p.img) || {}).img; };
+  const pic = picOf;
   $("sinfo").innerHTML = `${esc(o.customer)} · ${esc(o.invoice)}` + o.items.map(i => `<div style="display:flex;align-items:center;gap:10px;margin-top:8px">
     ${pic(i) ? `<img src="${esc(pic(i))}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:8px;flex:none">` : `<div class="ph" style="width:64px;height:64px">🛍️</div>`}
     <span>${esc(i.name)}${i.note ? ` (${esc(i.note)})` : ""} x${i.qty}</span></div>`).join("");
@@ -949,6 +995,7 @@ async function shipAction(a, o) {
 $("v-invoice").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.dataset.itab) { iTab = b.dataset.itab; iPage = 1; return renderInvoices(); }
+  if (b.dataset.iview) { iView = b.dataset.iview; try { localStorage.setItem("invView", iView); } catch { } return renderInvoices(); }
   const o = b.dataset.ia && orders.find(x => x.id === b.dataset.oid);
   if (o) invAction(b.dataset.ia, o);
 });
