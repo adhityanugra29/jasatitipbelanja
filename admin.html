@@ -17,6 +17,10 @@
   /* login */
   #login { max-width:380px; margin:12vh auto; padding:0 16px; text-align:center; }
   #login img { height:110px; }
+  #loading { position:fixed; inset:0; z-index:99; background:#FFF8FBE6; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; font-weight:700; }
+  #loading[hidden] { display:none; }
+  #loading i { width:44px; height:44px; border:5px solid #FDEBF3; border-top-color:#F44D92; border-radius:50%; animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
 
   /* sidebar */
   #side { position:fixed; inset:0 auto 0 0; width:260px; background:var(--side); color:#D9EEF0; padding:20px 14px; display:flex; flex-direction:column; overflow-y:auto; z-index:20; transition:transform .2s; }
@@ -224,6 +228,7 @@
 </style>
 </head>
 <body>
+<div id="loading" hidden role="status" aria-live="polite"><i></i><p>Sedang masuk…</p></div>
 <div id="login">
   <img src="/assets/logo.png" alt="Jasa Titip Belanja">
   <h1>Admin Toko</h1>
@@ -443,13 +448,16 @@ const say = (t, bad) => { $("msg").textContent = t; $("msg").style.color = bad ?
 const grab = () => { data.wa = $("wa").value; data.notice = $("notice").value; };
 
 $("go").onclick = async () => {
-  pw = $("pw").value;
+  if ($("go").disabled) return; // cegah klik ganda saat memuat
+  pw = $("pw").value; $("err").textContent = "";
+  $("go").disabled = true; $("loading").hidden = false;
   try {
     await api("GET", "/api/check");
     data = await (await fetch("/api/data")).json();
     orders = await api("GET", "/api/orders"); settings = await api("GET", "/api/settings"); fillCfg(); renderAll();
     $("login").hidden = true; $("app").hidden = false; render();
   } catch (e) { $("err").textContent = e.message; }
+  finally { $("go").disabled = false; $("loading").hidden = true; }
 };
 $("pw").onkeydown = e => { if (e.key === "Enter") $("go").click(); };
 $("logout").onclick = () => location.reload();
