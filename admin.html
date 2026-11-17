@@ -17,7 +17,7 @@
   /* login */
   #login { max-width:380px; margin:12vh auto; padding:0 16px; text-align:center; }
   #login img { height:110px; }
-  #loading { position:fixed; inset:0; z-index:99; background:#FFF8FBE6; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; font-weight:700; }
+  #loading { position:fixed; inset:0; z-index:99; background:#FFF8FB; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; font-weight:700; }
   #loading[hidden] { display:none; }
   #loading i { width:44px; height:44px; border:5px solid #FDEBF3; border-top-color:#F44D92; border-radius:50%; animation:spin .8s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
@@ -123,6 +123,9 @@
   .docbox input { margin:0; flex:1 1 200px; }
   .linkbtn2 { background:none; border:0; color:var(--ink); font:inherit; font-weight:700; text-decoration:underline; cursor:pointer; }
   .otable a { color:var(--ink); font-weight:700; }
+  #pl-table table { min-width:0; }
+  #pl-table .linkbtn2 { text-align:left; }
+  .otable a.wa { display:inline-block; background:#1ea952; color:#fff; border-radius:10px; padding:9px 14px; font-size:.9rem; text-decoration:none; white-space:nowrap; }
   .oact { display:flex; gap:6px; align-items:center; justify-content:flex-end; }
   .oact .b { padding:9px 12px; font-size:.9rem; white-space:nowrap; }
   .oact .sm { background:#fff; border:1.5px solid var(--ink); color:var(--ink); }
@@ -731,7 +734,7 @@ function renderCustomers() {
     list.map(c => `<tr>
       <td><button class="linkbtn2" data-pl="${esc(c.phone)}">${esc(c.name)}</button></td>
       <td>${esc(c.phone)}</td><td>${esc(c.city || "-")}</td><td>${c.inv.length}</td><td><b>${rpf(c.spent)}</b></td><td>${dfmt(c.last)}</td>
-      <td><a class="b sm" target="_blank" rel="noopener" href="https://wa.me/62${esc(c.phone.slice(1))}">WhatsApp</a></td></tr>${
+      <td><a class="wa" target="_blank" rel="noopener" href="https://wa.me/62${esc(c.phone.slice(1))}">WhatsApp</a></td></tr>${
       plOpen === c.phone ? `<tr><td colspan="7"><small>${esc(c.address)}</small>${c.inv.map(o => `<div style="padding:6px 0"><button class="linkbtn2" data-ia="view" data-oid="${esc(o.id)}">${esc(o.invoice)}</button> · ${dfmt(o.created)} · ${rpf(o.total)} <span class="pay ${o.paidAt ? "lunas" : "belum"}">${o.paidAt ? "LUNAS" : "BELUM BAYAR"}</span></div>`).join("")}</td></tr>` : ""}`).join("")}</tbody></table>`
     : `<p style="padding:24px;text-align:center">${all.length ? "Tidak ada pelanggan yang cocok." : "Belum ada pelanggan"}</p>`;
 }
