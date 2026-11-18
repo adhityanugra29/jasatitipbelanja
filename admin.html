@@ -487,7 +487,7 @@
   <h3 style="margin:14px 0 0">Isi barang</h3>
   <div id="i-lines"></div>
   <button type="button" class="b" id="iaddline">+ Tambah barang</button>
-  <label style="display:block;margin-top:12px">Ongkos kirim (Rp)</label><input id="i-shipping" type="number" min="0" inputmode="numeric">
+  <label style="display:block;margin-top:12px">Ongkos kirim (Rp)</label><input id="i-shipping" class="money" inputmode="numeric" autocomplete="off">
   <div class="isum" id="i-sum"></div>
   <div id="ierr" style="color:#c00;margin:8px 0"></div>
   <div class="wact"><button class="b dark" id="isave">Simpan</button><button class="b" id="icancel">Batal</button></div>
@@ -559,7 +559,7 @@ function renderForm(i) {
     <label>Nama barang</label><input value="${esc(p.name)}" data-i="${i}" data-f="name">
     <label>Keterangan singkat (opsional)</label><input value="${esc(p.desc)}" data-i="${i}" data-f="desc">
     <div class="two">
-      <div><label>Harga (Rp)</label><input type="number" inputmode="numeric" value="${p.price}" data-i="${i}" data-f="price"></div>
+      <div><label>Harga (Rp)</label><input class="money" inputmode="numeric" autocomplete="off" value="${fmtN(p.price)}" data-i="${i}" data-f="price"></div>
       <div><label>Kategori</label><input list="cats" value="${esc(p.cat)}" data-i="${i}" data-f="cat"></div>
     </div>
     <label>Stok (kosongkan = tidak terbatas)</label><input type="number" inputmode="numeric" min="0" value="${p.stock ?? ""}" data-i="${i}" data-f="stock">
@@ -652,7 +652,7 @@ document.addEventListener("click", async e => {
 document.addEventListener("change", async e => {
   const t = e.target, p = data.products[t.dataset.i];
   if (!p) return;
-  if (t.dataset.f !== "img") { p[t.dataset.f] = t.type === "number" ? (t.value === "" ? null : Number(t.value)) : t.value; return; }
+  if (t.dataset.f !== "img") { p[t.dataset.f] = t.classList.contains("money") ? (t.value === "" ? null : money(t.value)) : t.type === "number" ? (t.value === "" ? null : Number(t.value)) : t.value; return; }
   try {
     say("Mengunggah foto…");
     p.img = (await api("POST", "/api/upload", { dataUrl: await prepare(t.files[0]) })).img;
@@ -666,6 +666,17 @@ $("stabs").onclick = e => {
   document.querySelectorAll("[data-sp]").forEach(p => { p.hidden = p.dataset.sp !== b.dataset.stab; });
 };
 // data toko untuk invoice: privat (bukan bagian dari katalog publik)
+// penulisan uang (accounting): 450.000, bukan 450000. Isi disimpan sebagai angka; money() membuang titik.
+const digits = v => String(v ?? "").replace(/[^0-9]/g, "");
+const money = v => Math.round(+digits(v)) || 0;
+const fmtN = v => (v === "" || v == null) ? "" : money(v).toLocaleString("id-ID");
+document.addEventListener("input", e => { // capture: berjalan sebelum pengendali lain membaca nilainya
+  const t = e.target; if (!t.classList?.contains("money")) return;
+  const keep = digits(t.value.slice(0, t.selectionStart ?? t.value.length)).length;
+  t.value = fmtN(digits(t.value) === "" ? "" : t.value);
+  let pos = 0, c = 0; while (pos < t.value.length && c < keep) { if (/[0-9]/.test(t.value[pos])) c++; pos++; }
+  try { t.setSelectionRange(pos, pos); } catch {}
+}, true);
 const CFG = ["storeName", "address", "phone", "email", "npwp", "admin"];
 let settings = {};
 const fillCfg = () => CFG.forEach(k => { $("cfg-" + k).value = settings[k] || ""; });
@@ -713,7 +724,7 @@ function wz2() {
           <div><label>Stok (kosong = tidak terbatas)</label><input id="ws" type="number" min="0" inputmode="numeric" value="1"></div>
         </div>
         <div class="two">
-          <div><label>Harga (Rp)</label><input id="wp" type="number" min="0" inputmode="numeric"></div>
+          <div><label>Harga (Rp)</label><input id="wp" class="money" inputmode="numeric" autocomplete="off"></div>
           <div><label>Keterangan singkat (opsional)</label><input id="wd"></div>
         </div>
         <label>Label di katalog (opsional)</label><select id="wb">${badgeOpts("")}</select>
@@ -763,8 +774,8 @@ async function addFiles(list) {
 async function wzSave() {
   const x = W.items[W.i], v = id => $(id).value.trim(), fail = t => { $("werr").textContent = t; };
   if (!v("wn")) return fail("Nama produk wajib diisi.");
-  if (!(Number(v("wp")) > 0)) return fail("Harga wajib diisi.");
-  data.products.unshift({ id: x.id, name: v("wn"), desc: v("wd"), price: Number(v("wp")), cat: v("wc") || "Lainnya", stock: v("ws") === "" ? null : Number(v("ws")), badge: $("wb").value, img: x.img });
+  if (!(money(v("wp")) > 0)) return fail("Harga wajib diisi.");
+  data.products.unshift({ id: x.id, name: v("wn"), desc: v("wd"), price: money(v("wp")), cat: v("wc") || "Lainnya", stock: v("ws") === "" ? null : Number(v("ws")), badge: $("wb").value, img: x.img });
   try { grab(); await api("PUT", "/api/data", data); }
   catch (e) { data.products.shift(); return fail(e.message); }
   x.status = "saved"; W.cat = v("wc"); W.added++;
@@ -1001,11 +1012,11 @@ let lines = [];
 const blankLine = () => ({ name: "", note: "", qty: 1, price: "", discount: "" });
 const num = v => Math.round(+v) || 0;
 function sumLines() {
-  const c = calc(lines.map(l => ({ qty: num(l.qty), price: num(l.price), discount: num(l.discount) })), num($("i-shipping").value));
+  const c = calc(lines.map(l => ({ qty: num(l.qty), price: money(l.price), discount: money(l.discount) })), money($("i-shipping").value));
   $("i-sum").innerHTML = `<div><span>Total Belanja</span><b>${rpf(c.gross)}</b></div><div><span>Total Diskon</span><b>– ${rpf(c.disc)}</b></div><div><span>Ongkos Kirim</span><b>${rpf(c.ship)}</b></div><div class="g"><span>Total</span><b>${rpf(c.total)}</b></div>`;
   lines.forEach((l, n) => { // subtotal per barang; diskon > qty×harga ditandai merah (ditolak server, API-4)
     const el = document.querySelector(`[data-sub="${n}"]`); if (!el) return;
-    const q = num(l.qty), p = num(l.price), d = num(l.discount), over = d > q * p;
+    const q = num(l.qty), p = money(l.price), d = money(l.discount), over = d > q * p;
     el.textContent = over ? "Diskon melebihi harga" : rpf(q * p - d);
     el.closest(".ln").classList.toggle("bad", over);
   });
@@ -1020,8 +1031,8 @@ function renderLines() {
     </div>
     <div class="lnum">
       <label>Qty<input type="number" min="1" inputmode="numeric" value="${l.qty}" data-ln="${n}" data-lf="qty"></label>
-      <label>Harga (Rp)<input type="number" min="0" inputmode="numeric" value="${l.price}" data-ln="${n}" data-lf="price"></label>
-      <label>Diskon (Rp)<input type="number" min="0" inputmode="numeric" placeholder="0" value="${l.discount}" data-ln="${n}" data-lf="discount"></label>
+      <label>Harga (Rp)<input class="money" inputmode="numeric" autocomplete="off" value="${fmtN(l.price)}" data-ln="${n}" data-lf="price"></label>
+      <label>Diskon (Rp)<input class="money" inputmode="numeric" autocomplete="off" placeholder="0" value="${fmtN(l.discount)}" data-ln="${n}" data-lf="discount"></label>
     </div>
     <div class="lsub"><span>Subtotal</span><b data-sub="${n}"></b></div></div>`).join("");
   sumLines();
@@ -1043,7 +1054,7 @@ function openInvoice(o, from = null) { // from = pesanan masuk yang dijadikan in
   const prev = from && lastOf(from.phone);
   const v = o || { invoice: nextInvoice(), ...(from && { customer: from.name, phone: from.phone, address: from.address || prev?.address, city: prev && (!from.address || from.address === prev.address) ? prev.city : "" }) };
   $("ititle").textContent = o ? "Edit Invoice" : "Buat Invoice";
-  IF.forEach(f => { $("i-" + f).value = v[f] || ""; });
+  IF.forEach(f => { $("i-" + f).value = f === "shipping" ? fmtN(v[f] || "") : v[f] || ""; });
   lines = o ? o.items.map(i => ({ ...i, discount: i.discount || "" })) : from ? (from.matched?.items || from.items).map(i => ({ name: i.name, note: "", qty: i.qty, price: i.price || "", discount: "" })) : [blankLine()];
   renderLines();
   $("ierr").textContent = ""; $("idlg").showModal(); $("i-customer").focus();
@@ -1052,8 +1063,8 @@ $("iadd").onclick = () => openInvoice();
 $("icancel").onclick = () => $("idlg").close();
 $("isave").onclick = async () => {
   const v = Object.fromEntries(IF.map(f => [f, $("i-" + f).value.trim()])), fail = t => void ($("ierr").textContent = t);
-  v.phone = normPhone(v.phone); v.shipping = num(v.shipping);
-  const items = lines.map(l => ({ name: l.name.trim(), note: (l.note || "").trim(), qty: num(l.qty), price: num(l.price), discount: num(l.discount) }))
+  v.phone = normPhone(v.phone); v.shipping = money(v.shipping);
+  const items = lines.map(l => ({ name: l.name.trim(), note: (l.note || "").trim(), qty: num(l.qty), price: money(l.price), discount: money(l.discount) }))
     .filter(i => i.name || i.price || i.discount); // baris yang benar-benar kosong diabaikan
   if (!v.customer) return fail("Nama pelanggan wajib diisi.");
   if (!/^08\d{8,12}$/.test(v.phone)) return fail("Nomor HP penerima harus nomor HP Indonesia (diawali 08).");
