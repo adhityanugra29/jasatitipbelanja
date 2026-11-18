@@ -93,6 +93,11 @@
   .send, .done { display:block; width:100%; text-align:center; padding:15px; border:0; border-radius:99px; background:var(--pink-d); color:#fff; font:inherit; font-weight:700; text-decoration:none; cursor:pointer; }
   .cust label { display:block; margin-top:8px; font-size:.85rem; font-weight:700; }
   .cust input, .cust textarea { display:block; resize:vertical; width:100%; margin-top:4px; padding:12px; font:inherit; font-weight:500; color:var(--ink); background:#fff; border:1.5px solid var(--line); border-radius:12px; }
+  .req { color:#c00; font-weight:700; }
+  .cust h3 small { font-size:.8rem; }
+  .cust .bad { border-color:#c00; box-shadow:0 0 0 3px #CC000022; }
+  #csaved { min-height:1.2em; margin-bottom:6px; color:var(--teal-d); font-size:.85rem; font-weight:600; }
+  #csaved.warn { color:#c00; }
   #cerr { min-height:1.3em; margin:6px 0; color:#c00; font-size:.9rem; font-weight:600; }
   .close { width:100%; margin-top:8px; padding:12px; border:0; background:none; font:inherit; color:var(--ink); cursor:pointer; }
   label.chk { display:flex; font-weight:500; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
@@ -144,11 +149,12 @@
   <div id="cfull" hidden>
     <div id="items"></div>
     <div class="cust">
-      <h3>Data penerima</h3>
-      <label>Nama penerima<input id="cname" autocomplete="name"></label>
-      <label>Nomor HP (WhatsApp)<input id="cphone" type="tel" inputmode="tel" autocomplete="tel" placeholder="08123456789"></label>
-      <label>Alamat lengkap<textarea id="caddr" rows="3" autocomplete="street-address" placeholder="Jalan, nomor rumah, RT/RW, kecamatan, kota, kode pos"></textarea></label>
+      <h3>Data penerima <small class="req">* wajib diisi</small></h3>
+      <label>Nama penerima <b class="req">*</b><input id="cname" autocomplete="name" required aria-required="true"></label>
+      <label>Nomor HP (WhatsApp) <b class="req">*</b><input id="cphone" type="tel" inputmode="tel" autocomplete="tel" placeholder="08123456789" required aria-required="true"></label>
+      <label>Alamat lengkap <b class="req">*</b><textarea id="caddr" rows="3" autocomplete="street-address" placeholder="Jalan, nomor rumah, RT/RW, kecamatan, kota, kode pos" required aria-required="true"></textarea></label>
       <div id="cerr" role="alert"></div>
+      <div id="csaved" aria-live="polite"></div>
     </div>
     <div class="cbar">
       <div class="total"><span>Total (belum termasuk ongkir)<small id="ccount"></small></span><span id="total"></span></div>
@@ -259,16 +265,30 @@ function renderCart() {
 // PSM-10: nama dan HP pelanggan, diingat di browser; HP dinormalisasi seperti di server (+62…, 62…, 8… -> 08…)
 const phone08 = v => { let d = String(v).replace(/\D/g, ""); if (d.startsWith("62")) d = "0" + d.slice(2); else if (d.startsWith("8")) d = "0" + d; return d; };
 try { const c = JSON.parse(localStorage.cust || "{}"); $("cname").value = c.name || ""; $("cphone").value = c.phone || ""; $("caddr").value = c.address || ""; } catch {}
-for (const id of ["cname", "cphone", "caddr"]) $(id).oninput = () => {
-  try { localStorage.cust = JSON.stringify({ name: $("cname").value, phone: $("cphone").value, address: $("caddr").value }); } catch {}
-  $("cerr").textContent = ""; renderCart();
-};
+const CUST = ["cname", "cphone", "caddr"];
+const custErr = () => ({ cname: !$("cname").value.trim() && "Nama penerima wajib diisi.",
+  cphone: !/^08\d{8,12}$/.test(phone08($("cphone").value)) && "Nomor HP harus nomor HP Indonesia (diawali 08).",
+  caddr: !$("caddr").value.trim() && "Alamat lengkap wajib diisi." });
+// simpan otomatis; dibaca balik supaya penyimpanan yang diblokir browser (mode privat) ketahuan
+function saveCust() {
+  const v = JSON.stringify({ name: $("cname").value, phone: $("cphone").value, address: $("caddr").value });
+  let ok = false;
+  try { localStorage.cust = v; ok = localStorage.cust === v; } catch {}
+  $("csaved").classList.toggle("warn", !ok);
+  $("csaved").textContent = !ok ? "Tidak bisa disimpan di browser ini" : CUST.some(id => custErr()[id]) ? "" : "✓ Tersimpan di perangkat ini";
+}
+for (const id of CUST) {
+  $(id).oninput = () => { $(id).classList.remove("bad"); $("cerr").textContent = ""; saveCust(); renderCart(); };
+  $(id).onchange = $(id).onblur = saveCust; // isian otomatis browser kadang tanpa peristiwa input
+}
+addEventListener("pagehide", saveCust);
+saveCust();
 // PSM-1: catat pesanan ke server; gagal pun WhatsApp tetap terbuka (tautan tidak dihentikan)
 $("send").addEventListener("click", e => {
   const name = $("cname").value.trim(), phone = phone08($("cphone").value), address = $("caddr").value.trim();
-  const bad = !name ? ["Nama penerima wajib diisi.", "cname"] : !/^08\d{8,12}$/.test(phone) ? ["Nomor HP harus nomor HP Indonesia (diawali 08).", "cphone"]
-    : !address ? ["Alamat lengkap wajib diisi.", "caddr"] : null;
-  if (bad) { e.preventDefault(); $("cerr").textContent = bad[0]; return $(bad[1]).focus(); }
+  const errs = custErr(), bad = CUST.filter(id => errs[id]);
+  CUST.forEach(id => $(id).classList.toggle("bad", !!errs[id])); // PSM-10: semua kolom bermasalah ditandai sekaligus
+  if (bad.length) { e.preventDefault(); $("cerr").textContent = errs[bad[0]]; return $(bad[0]).focus(); }
   fetch("/api/inbox", { method: "POST", keepalive: true, headers: { "content-type": "application/json" },
     body: JSON.stringify({ code: CODE, name, phone, address, items: Object.entries(cart).map(([id, qty]) => ({ id, qty })) }) }).catch(() => {});
 });
