@@ -158,13 +158,6 @@
   /* Pesanan Masuk (PSM-*) dan perbandingan dengan invoice */
   #v-pesanan .ofil { grid-template-columns:1fr; }
   .psrow { grid-template-columns:170px 1fr 150px auto; }
-  .cmp { margin-top:12px; border:1.5px solid var(--line); border-radius:12px; background:#fff; padding:10px 12px; font-size:.9rem; }
-  .cmp table { width:100%; border-collapse:collapse; }
-  .cmp th { font-size:.7rem; letter-spacing:.08em; text-align:left; padding:4px 6px; }
-  .cmp td { padding:5px 6px; border-top:1px solid #FDEBF3; }
-  .cmp td:nth-child(2), .cmp td:nth-child(3), .cmp th:nth-child(2), .cmp th:nth-child(3) { text-align:center; width:64px; }
-  .cmp .bad td:last-child { color:#c00; font-weight:700; }
-  .cmp .good td:last-child { color:#1c6b32; font-weight:700; }
   @media (max-width:800px) { .psrow { grid-template-columns:1fr auto; } .psrow > :nth-child(2) { grid-column:1/-1; order:3; } .psrow > .oact { grid-column:1/-1; order:4; } .psrow > .oact .b { flex:1; } }
   #pl-table table { min-width:0; }
   #pl-table .linkbtn2 { text-align:left; }
@@ -230,13 +223,23 @@
   }
   /* editor barang di form invoice */
   #idlg { width:min(820px,96vw); }
-  .ln { display:grid; grid-template-columns:2fr 1.5fr .6fr 1fr 1fr auto; gap:6px; align-items:center; margin-bottom:6px; }
-  .ln input { margin:0; min-width:0; }
-  .lnh { display:grid; grid-template-columns:2fr 1.5fr .6fr 1fr 1fr 40px; gap:6px; font-size:.75rem; font-weight:700; margin-top:6px; }
+  /* kartu per barang di formulir invoice (INV-14); di-scope ke #i-lines karena .ln juga dipakai label pengiriman */
+  #i-lines .ln { background:#fff; border:1.5px solid var(--line); border-radius:14px; padding:0 14px 12px; margin-top:16px; overflow:hidden; box-shadow:0 3px 10px #0E3B430F; }
+  #i-lines .ln.bad { border-color:#c00; }
+  #i-lines .lh { display:flex; justify-content:space-between; align-items:center; min-height:40px; margin:0 -14px 2px; padding:4px 14px; background:var(--pink-soft); border-bottom:1.5px solid var(--line); } /* kepala berwarna = pemisah antar barang */
+  #i-lines .lrm { border:0; background:none; padding:4px 2px; color:#c00; font:inherit; font-size:.85rem; font-weight:700; cursor:pointer; }
+  #i-lines label { display:block; margin-top:8px; font-size:.8rem; font-weight:700; }
+  #i-lines label small { font-weight:500; opacity:.65; }
+  #i-lines input { margin:4px 0 0; min-width:0; }
+  #i-lines .lnames { display:grid; grid-template-columns:1fr; column-gap:10px; }
+  #i-lines .lnum { display:grid; grid-template-columns:.7fr 1.3fr 1.3fr; gap:8px; }
+  #i-lines .lsub { display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px dashed var(--line); }
+  #i-lines .ln.bad .lsub b { color:#c00; }
+  #iaddline { width:100%; margin-top:10px; background:#fff; color:var(--pink-d); border:2px dashed var(--pink); }
+  @media (min-width:701px) { #i-lines .lnames { grid-template-columns:1.4fr 1fr; } }
   .isum { margin:12px 0 0 auto; width:min(320px,100%); }
   .isum div { display:flex; justify-content:space-between; padding:4px 0; }
   .isum .g { border-top:2px solid var(--ink); margin-top:4px; padding-top:8px; font-size:1.1rem; }
-  @media (max-width:700px) { .ln { grid-template-columns:1fr 1fr; } .ln input:first-child, .ln input:nth-child(2) { grid-column:1/-1; } .lnh { display:none; } }
   /* tampilan invoice */
   #vdlg { width:min(820px,96vw); }
   #invoice { background:#fff; color:#111; padding:28px 32px; font-size:14px; page:inv; }
@@ -460,10 +463,8 @@
   <label>Alamat lengkap</label><textarea id="i-address" rows="3" placeholder="Jalan, nomor rumah, RT/RW, kecamatan, kode pos"></textarea>
   <div class="two"><div><label>Kota</label><input id="i-city"></div><div><label>No. invoice</label><input id="i-invoice"></div></div>
   <h3 style="margin:14px 0 0">Isi barang</h3>
-  <div class="lnh"><span>PRODUK</span><span>KETERANGAN (opsional)</span><span>QTY</span><span>HARGA (Rp)</span><span>DISKON (Rp)</span><span></span></div>
   <div id="i-lines"></div>
   <button type="button" class="b" id="iaddline">+ Tambah barang</button>
-  <div id="i-cmp" class="cmp" hidden></div>
   <label style="display:block;margin-top:12px">Ongkos kirim (Rp)</label><input id="i-shipping" type="number" min="0" inputmode="numeric">
   <div class="isum" id="i-sum"></div>
   <div id="ierr" style="color:#c00;margin:8px 0"></div>
@@ -894,13 +895,6 @@ function compare(pItems, iItems) {
   return [...new Set([...P.keys(), ...I.keys()])].map(x => { const p = P.get(x), i = I.get(x);
     return { name: (p || i).name, p: p?.qty || 0, i: i?.qty || 0, st: !i ? "Tidak ada di invoice" : !p ? "Tambahan, tidak ada di pesanan" : p.qty !== i.qty ? "Jumlah beda" : "" }; });
 }
-function renderCmp() {
-  const code = cur?.pesananKode || pFrom?.code, p = code && inbox.find(x => x.code === code);
-  $("i-cmp").hidden = !p; if (!p) return;
-  const rows = compare(p.items, lines), bad = rows.filter(r => r.st).length;
-  $("i-cmp").innerHTML = `<b>Cek pesanan ${esc(code)}</b> · ${bad ? `<b style="color:#c00">${bad} selisih</b>` : `<b style="color:#1c6b32">semua cocok</b>`}
-    <table><thead><tr><th>BARANG<th>PESANAN<th>INVOICE<th></tr></thead><tbody>${rows.map(r => `<tr class="${r.st ? "bad" : "good"}"><td>${esc(r.name)}</td><td>${r.p}</td><td>${r.i}</td><td>${r.st ? "⚠ " + r.st : "✓ Sama"}</td></tr>`).join("")}</tbody></table>`;
-}
 function renderInbox() {
   const nw = inbox.filter(p => !invoiceOf(p)), done = inbox.filter(p => invoiceOf(p));
   $("pcount").textContent = nw.length;
@@ -943,16 +937,27 @@ const num = v => Math.round(+v) || 0;
 function sumLines() {
   const c = calc(lines.map(l => ({ qty: num(l.qty), price: num(l.price), discount: num(l.discount) })), num($("i-shipping").value));
   $("i-sum").innerHTML = `<div><span>Total Belanja</span><b>${rpf(c.gross)}</b></div><div><span>Total Diskon</span><b>– ${rpf(c.disc)}</b></div><div><span>Ongkos Kirim</span><b>${rpf(c.ship)}</b></div><div class="g"><span>Total</span><b>${rpf(c.total)}</b></div>`;
-  renderCmp();
+  lines.forEach((l, n) => { // subtotal per barang; diskon > qty×harga ditandai merah (ditolak server, API-4)
+    const el = document.querySelector(`[data-sub="${n}"]`); if (!el) return;
+    const q = num(l.qty), p = num(l.price), d = num(l.discount), over = d > q * p;
+    el.textContent = over ? "Diskon melebihi harga" : rpf(q * p - d);
+    el.closest(".ln").classList.toggle("bad", over);
+  });
 }
 function renderLines() {
+  // INV-14: satu kartu per barang, semua kolom berlabel
   $("i-lines").innerHTML = lines.map((l, n) => `<div class="ln">
-    <input placeholder="Nama produk" value="${esc(l.name)}" data-ln="${n}" data-lf="name">
-    <input placeholder="Mis. ukuran / warna" value="${esc(l.note)}" data-ln="${n}" data-lf="note">
-    <input type="number" min="1" placeholder="Qty" value="${l.qty}" data-ln="${n}" data-lf="qty">
-    <input type="number" min="0" placeholder="Harga" value="${l.price}" data-ln="${n}" data-lf="price">
-    <input type="number" min="0" placeholder="Diskon" value="${l.discount}" data-ln="${n}" data-lf="discount">
-    <button type="button" class="dots" data-lrm="${n}" aria-label="Hapus baris">✕</button></div>`).join("");
+    <div class="lh"><b>Barang ${n + 1}</b>${lines.length > 1 ? `<button type="button" class="lrm" data-lrm="${n}" aria-label="Hapus barang ${n + 1}">🗑 Hapus</button>` : ""}</div>
+    <div class="lnames">
+      <label>Produk<input placeholder="Nama produk" value="${esc(l.name)}" data-ln="${n}" data-lf="name"></label>
+      <label>Keterangan <small>(opsional)</small><input placeholder="Mis. ukuran / warna" value="${esc(l.note)}" data-ln="${n}" data-lf="note"></label>
+    </div>
+    <div class="lnum">
+      <label>Qty<input type="number" min="1" inputmode="numeric" value="${l.qty}" data-ln="${n}" data-lf="qty"></label>
+      <label>Harga (Rp)<input type="number" min="0" inputmode="numeric" value="${l.price}" data-ln="${n}" data-lf="price"></label>
+      <label>Diskon (Rp)<input type="number" min="0" inputmode="numeric" placeholder="0" value="${l.discount}" data-ln="${n}" data-lf="discount"></label>
+    </div>
+    <div class="lsub"><span>Subtotal</span><b data-sub="${n}"></b></div></div>`).join("");
   sumLines();
 }
 $("idlg").addEventListener("input", e => {

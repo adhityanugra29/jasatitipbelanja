@@ -32,3 +32,7 @@ Pesanan masuk otomatis dari WhatsApp. Status DP/cicilan. Stok berkurang otomatis
 
 **Dokumen**
 - **INV-10** Bukti bayar bersifat privat (hanya admin yang login). — ✅ `tests/api.test.js` (API-6)
+
+**Formulir invoice**
+- **INV-14** Isi barang di formulir berupa **kartu per barang** (bukan baris kolom tanpa label): judul "Barang N" di kepala berwarna (pemisah antar barang, ditambah jarak 16px antar kartu) dengan tombol Hapus (disembunyikan bila hanya satu barang), kolom **Produk** dan **Keterangan (opsional)**, lalu satu baris **Qty · Harga (Rp) · Diskon (Rp)** yang semuanya berlabel, dan **Subtotal** barang itu yang ikut berubah saat diketik. Bila diskon melebihi qty×harga, kartu ditandai merah dengan "Diskon melebihi harga". Tombol "+ Tambah barang" selebar form. Di layar >700px Produk dan Keterangan bersebelahan. Tanpa geser samping di 390. — ✅ diuji di Chrome (CDP) lebar 390 dan 1280 dengan server demo (kepala berwarna dan jarak 16px antar kartu terukur): kartu dan label, subtotal hidup, diskon berlebih merah, tambah/hapus barang, Hapus tersembunyi untuk satu barang, tanpa geser samping, simpan invoice dari pesanan
+- **INV-15** *(dihapus atas permintaan)* Panel "Cek pesanan" di formulir invoice tidak diperlukan. Perbandingan pesanan vs invoice hanya berupa penanda di daftar Pesanan Masuk (PSM-7).
