@@ -1220,14 +1220,17 @@ function openLabel(o) {
       <tr class="lt"><td>Total</td><td>${total} pcs</td></tr></table></div>`;
   $("ldlg").showModal();
 }
-// KIR-12: menekan cetak pada pesanan yang belum dikirim = dianggap terkirim hari ini (kurir dan resi sudah ada, API-4c)
-$("lprint").onclick = async () => {
-  window.print();
-  const o = labelOrder;
+// KIR-12: mencetak label pada pesanan yang belum dikirim = dianggap terkirim hari ini (kurir dan resi sudah ada, API-4c).
+// Ditandai setelah dialog cetak browser ditutup (afterprint), bukan saat tombol diklik: di sebagian browser print() tidak menahan
+// skrip, sehingga pesanan sudah pindah dan pratinjau tertutup selagi dialog cetak masih terbuka.
+let printing = null;
+$("lprint").onclick = () => { printing = labelOrder; window.print(); };
+addEventListener("afterprint", async () => {
+  const o = printing; printing = null; // cetak invoice (printing kosong) tidak mengubah apa pun
   if (!o || o.shipped || !o.paidAt || !o.courier || !o.resi) return;
   o.shipped = today(); $("ldlg").close(); await saveOrders();
   say(`✅ Label ${o.invoice} dicetak, pesanan dianggap sudah dikirim. Batal kirim ada di menu ⋮ tab Sudah Dikirim.`);
-};
+});
 $("lclose").onclick = () => $("ldlg").close();
 
 async function shipAction(a, o) {
