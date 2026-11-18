@@ -21,7 +21,8 @@ if (process.env.DEMO) try {
   const orders = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "orders.json"), "utf8"));
   // katalog = barang yang muncul di invoice (harga dari invoice), supaya pesanan dan invoice memakai barang yang sama
   const price = new Map(orders.flatMap(o => o.items.map(i => [i.name, i.price])));
-  const products = [...price].map(([name, p], n) => ({ id: "p" + (n + 1), name, price: p, cat: "Contoh", desc: "", badge: "", stock: null, img: "" }));
+  const products = [...price].map(([name, p], n) => ({ id: "p" + (n + 1), name, price: p, cat: "Contoh", desc: "", badge: "", stock: null, img: "/uploads/demo-tas.jpg" }));
+  col("files").replaceOne({ _id: "uploads/demo-tas.jpg" }, { buf: fs.readFileSync(path.join(__dirname, "demo-tas.jpg")) }); // foto contoh yang sama untuk semua barang demo
   const pid = name => products.find(p => p.name === name).id;
   col("kv").replaceOne({ _id: "data" }, { v: { wa: "6281234567890", notice: "", products } });
   // pesanan per invoice: [kode, menit yang lalu, [[barang, qty]]]. Sebagian sengaja berbeda dari invoicenya.
