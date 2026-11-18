@@ -351,10 +351,9 @@
     #otable .plc, #otable .plm { min-width:0; }
     #otable .pls.shp { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
     #otable .shi { overflow-wrap:anywhere; }
-    /* aksi utama selebar kartu di baris pertama; Cetak Label dan ⋮ di bawahnya, muat di lebar berapa pun */
-    #otable .oact { flex-wrap:wrap; gap:8px; }
+    /* satu aksi utama (Atur kurir & jadwal / Cetak Label, KIR-4) selebar sisa baris, ⋮ di sebelahnya */
+    #otable .oact { gap:8px; }
     #otable .oact .b { flex:1; min-width:0; padding:11px 8px; font-size:.9rem; }
-    #otable .oact .b.dark { order:-1; flex:1 1 100%; }
     .dots { width:44px; height:44px; }
   }
 </style>
@@ -1166,7 +1165,7 @@ function renderOrders() {
         <div><small>KURIR</small><b>${o.courier ? esc(o.courier) : `<span class="mut">Belum dipilih</span>`}</b>${o.resi ? `<br><small class="rs">Resi ${esc(o.resi)}</small>` : ""}</div>
         <div><small>JADWAL KIRIM</small><b>${dfmt(o.shipDate)}</b></div>
         <div><small>DIBAYAR</small><span class="pay lunas">LUNAS</span> <small class="rs">${dfmt(o.paidAt)}</small></div></div>
-      <div class="oact plf">${labelReady(o) ? btn("label", o, "Cetak Label") : ""}${o.shipped ? "" : btn("set", o, "Atur kurir &amp; jadwal", "dark")}${dots("ship", o)}</div></div>`; }).join("")
+      <div class="oact plf">${labelReady(o) ? btn("label", o, "Cetak Label", "dark") : btn("set", o, "Atur kurir &amp; jadwal", "dark")}${dots("ship", o)}</div></div>`; }).join("")
     : `<p style="padding:24px;text-align:center">${all.length ? "Tidak ada pesanan yang cocok." : "Belum ada pesanan siap kirim. Pesanan masuk otomatis setelah invoice dibayar."}</p>`;
   $("otable").insertAdjacentHTML("beforeend", pagerHtml("ship", oPage, list.length));
 }
@@ -1247,7 +1246,7 @@ let popFor = null;
 function popItems(ctx, o) {
   const act = ctx === "inv"
     ? (o.paidAt ? (o.shipped ? "" : `<button data-ia="unpay">Batal bayar</button>`) : `<button data-ia="edit">Edit invoice</button>`)
-    : (o.shipped ? `<button data-oa="unship">Batal kirim</button>` : ""); // Atur kurir & jadwal = tombol utama kartu (KIR-4), bukan di menu
+    : (o.shipped ? `<button data-oa="unship">Batal kirim</button>` : labelReady(o) ? `<button data-oa="set">Ubah kurir &amp; jadwal</button>` : ""); // KIR-4: sebelum terisi, Atur kurir & jadwal adalah tombol utama; sesudahnya pindah ke sini
   const docs = `<button data-${ctx === "inv" ? "ia" : "oa"}="view">Lihat / cetak invoice</button>` + (o.proof ? `<button data-doc="${esc(o.proof)}">Lihat bukti bayar</button>` : "");
   const del = ctx === "inv" && !o.paidAt ? `<button class="danger" data-ia="del">Hapus invoice</button>` : "";
   return act + docs + del || `<button disabled>Tidak ada aksi</button>`;
