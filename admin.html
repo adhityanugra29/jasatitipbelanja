@@ -31,6 +31,7 @@
   .nav.on { background:var(--pink-soft); border-color:var(--pink); color:var(--pink-d); font-weight:700; }
   .nav svg { width:20px; height:20px; flex:none; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .nav .tag { margin-left:auto; min-width:24px; padding:1px 7px; border-radius:4px; background:var(--teal); color:var(--ink); font-size:.8rem; font-weight:700; text-align:center; }
+  .nav .tag:empty { display:none; } /* angka 0 tidak ditampilkan */
   .nav .tag.out { background:none; border:1px solid var(--line); color:var(--ink); font-weight:500; }
   #side .gap { flex:1; }
 
@@ -135,16 +136,21 @@
   .ivrow .linkbtn2, .ivcard .linkbtn2 { text-align:left; padding:0; white-space:nowrap; }
   .ivtx { font-size:.9rem; margin-top:2px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
   .ivtot { text-align:right; white-space:nowrap; }
-  .ivgrid { grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:14px; }
+  .ivgrid { grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; }
   .ivcard { background:#fff; border-radius:18px; box-shadow:0 4px 14px #0E3B4314; overflow:hidden; display:flex; flex-direction:column; border-top:5px solid var(--pink); }
   .ivcard.paid { border-top-color:#0BBDB6; }
-  .ivpics { position:relative; display:grid; grid-template-columns:1fr 1fr; gap:2px; height:130px; background:#FDEBF3; }
-  .ivpics.one { grid-template-columns:1fr; }
-  .ivpics img { width:100%; height:100%; object-fit:cover; }
-  .ivph { display:grid; place-items:center; font-size:2.6rem; background:#FDEBF3; }
-  .ivmore { position:absolute; right:8px; bottom:8px; background:#0E3B43cc; color:#fff; border-radius:99px; padding:2px 10px; font-size:.75rem; font-weight:700; }
-  .ivst { position:absolute; left:8px; top:8px; }
-  .ivbody { padding:12px 16px; flex:1; display:flex; flex-direction:column; gap:2px; }
+  .ivhead { padding:12px 16px 8px; display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; background:#FDEBF3; }
+  .ivhead .pay { margin-left:auto; }
+  .ivwho { padding:10px 16px 0; display:flex; flex-direction:column; }
+  .ivwho small, .ivit small { color:#5E8388; }
+  .ivitems { list-style:none; margin:8px 16px 12px; padding:0; flex:1; }
+  .ivit { display:grid; grid-template-columns:42px 1fr auto; gap:10px; align-items:center; padding:8px 0; border-top:1px dashed var(--line); }
+  .ivit:first-child { border-top:0; }
+  .ivit img, .ivph { width:42px; height:42px; border-radius:10px; object-fit:cover; }
+  .ivph { display:grid; place-items:center; font-size:1.3rem; background:#FDEBF3; }
+  .ivit > div { min-width:0; display:flex; flex-direction:column; }
+  .ivit > div > b { font-size:.92rem; line-height:1.25; }
+  .ivit > b { font-size:.92rem; white-space:nowrap; }
   .ivfoot { padding:10px 16px 14px; border-top:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
   .ivfoot > b { font-size:1.15rem; }
   @media (max-width:800px) {
@@ -564,7 +570,7 @@ async function api(method, url, body) {
 
 function render() {
   $("wa").value = data.wa; $("notice").value = data.notice || "";
-  $("tcount").textContent = data.products.length;
+  $("tcount").textContent = data.products.length || "";
   $("cats").innerHTML = [...new Set([...(data.cats || []), ...data.products.map(p => p.cat)].filter(Boolean))].map(c => `<option value="${esc(c)}">`).join("");
   page = clampPage(page, data.products.length);
   const start = (page - 1) * PER; // PAG-4: indeks global, supaya Edit/Hapus menunjuk barang yang benar di halaman mana pun
@@ -929,7 +935,7 @@ function fillSel(id, first, opts) {
 // ---- Invoice
 function renderInvoices() {
   const unpaid = orders.filter(o => !o.paidAt), paid = orders.filter(o => o.paidAt);
-  $("icount").textContent = unpaid.length;
+  $("icount").textContent = unpaid.length || "";
   $("iv-stats").innerHTML = stat("BELUM DIBAYAR", unpaid.length, "#c00") + stat("TAGIHAN BELUM DIBAYAR", rpf(unpaid.reduce((s, o) => s + o.total, 0))) + stat("SUDAH DIBAYAR", paid.length, "#1c6b32");
   $("iv-tabs").innerHTML = tabs(iTab, [["unpaid", "Belum Dibayar", unpaid.length], ["paid", "Sudah Dibayar", paid.length]], "itab");
   fillSel("iv-m", "Semua bulan", monthOpts(orders.map(o => o.created.slice(0, 7))));
@@ -953,9 +959,11 @@ function renderInvoices() {
         <div class="ivtot"><b>${rpf(o.total)}</b><br>${status(o)}${o.paidAt ? `<br><small>${kirim(o)}</small>` : ""}</div>
         ${acts(o)}</div>`).join("")}</div>`
     : `<div class="ivgrid">${shown.map(o => `<div class="ivcard ${o.paidAt ? "paid" : ""}">
-        <div class="ivpics ${o.items.length < 2 ? "one" : ""}">${o.items.slice(0, 2).map(i => picOf(i) ? `<img src="${esc(picOf(i))}" alt="">` : `<div class="ivph">🛍️</div>`).join("")}${o.items.length > 2 ? `<span class="ivmore">+${o.items.length - 2} lainnya</span>` : ""}<span class="ivst">${status(o)}</span></div>
-        <div class="ivbody">${no(o)} <small>· ${dfmt(o.created)}</small><b>${esc(o.customer)}</b><small>${esc(o.city || "-")}${o.paidAt ? " · " + kirim(o) : ""}</small>
-          <div class="ivtx">${esc(o.items.slice(0, 2).map(i => `${i.name}${i.note ? ` (${i.note})` : ""} ×${i.qty}`).join(", "))}</div></div>
+        <div class="ivhead">${no(o)} <small>· ${dfmt(o.created)}</small>${status(o)}</div>
+        <div class="ivwho"><b>${esc(o.customer)}</b><small>${esc(o.city || "-")}${o.paidAt ? " · " + kirim(o) : ""}</small></div>
+        <ul class="ivitems">${o.items.map(i => `<li class="ivit">${picOf(i) ? `<img src="${esc(picOf(i))}" alt="">` : `<div class="ivph">🛍️</div>`}
+          <div><b>${esc(i.name)}</b>${i.note ? `<small>${esc(i.note)}</small>` : ""}<small>${i.qty} × ${rpf(i.price)}${i.discount ? ` − diskon ${rpf(i.discount)}` : ""}</small></div>
+          <b>${rpf(i.qty * i.price - (i.discount || 0))}</b></li>`).join("")}</ul>
         <div class="ivfoot"><b>${rpf(o.total)}</b>${acts(o)}</div></div>`).join("")}</div>`;
   $("iv-table").insertAdjacentHTML("beforeend", pagerHtml("inv", iPage, list.length));
 }
@@ -1018,7 +1026,7 @@ const qtyKey = a => JSON.stringify(a.map(i => [i.id, i.qty]).sort());
 function renderInbox() {
   const by = { new: [], match: [], done: [] };
   inbox.forEach(p => by[stageOf(p)].push(p));
-  $("pcount").textContent = by.new.length;
+  $("pcount").textContent = by.new.length || "";
   $("ps-stats").innerHTML = stat("BARU (PERLU DICOCOKKAN)", by.new.length, "#c00") + stat("SUDAH DICOCOKKAN", by.match.length) + stat("SUDAH DIINVOICE", by.done.length, "#1c6b32");
   $("ps-tabs").innerHTML = tabs(pTab, [["new", "Baru", by.new.length], ["match", "Sudah Dicocokkan", by.match.length], ["done", "Sudah Diinvoice", by.done.length]], "ptab");
   const q = $("ps-q").value.toLowerCase();
@@ -1218,7 +1226,7 @@ function statusOf(o) {
 const labelReady = o => !!o.courier && !!o.resi && !!(o.shipDate || o.shipped);
 function renderOrders() {
   const all = orders.filter(o => o.paidAt), todo = all.filter(o => !o.shipped), done = all.filter(o => o.shipped);
-  $("ocount").textContent = todo.length;
+  $("ocount").textContent = todo.length || "";
   const cnt = k => todo.filter(o => statusOf(o).k === k).length;
   $("ostats").innerHTML = stat("HARI INI", cnt("today"), "#8a5a00") + stat("TERLAMBAT", cnt("late"), "#c00") + stat("TERJADWAL", cnt("sched")) + stat("BELUM DIJADWALKAN", cnt("none"));
   $("otabs").innerHTML = tabs(oTab, [["todo", "Perlu Dikirim", todo.length], ["done", "Sudah Dikirim", done.length]], "otab");
