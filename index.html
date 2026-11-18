@@ -94,7 +94,7 @@
   .total { display:flex; justify-content:space-between; font-weight:800; padding:14px 0; }
   .send, .done { display:block; width:100%; text-align:center; padding:15px; border:0; border-radius:99px; background:var(--pink-d); color:#fff; font:inherit; font-weight:700; text-decoration:none; cursor:pointer; }
   .cust label { display:block; margin-top:8px; font-size:.85rem; font-weight:700; }
-  .cust input { width:100%; margin-top:4px; padding:12px; font:inherit; font-weight:500; color:var(--ink); background:#fff; border:1.5px solid var(--line); border-radius:12px; }
+  .cust input, .cust textarea { display:block; resize:vertical; width:100%; margin-top:4px; padding:12px; font:inherit; font-weight:500; color:var(--ink); background:#fff; border:1.5px solid var(--line); border-radius:12px; }
   #cerr { min-height:1.3em; margin:6px 0; color:#c00; font-size:.9rem; font-weight:600; }
   .close { width:100%; margin-top:8px; padding:12px; border:0; background:none; font:inherit; color:var(--ink); cursor:pointer; }
   label.chk { display:flex; font-weight:500; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
@@ -153,6 +153,7 @@
       <h3>Data penerima</h3>
       <label>Nama penerima<input id="cname" autocomplete="name"></label>
       <label>Nomor HP (WhatsApp)<input id="cphone" type="tel" inputmode="tel" autocomplete="tel" placeholder="08123456789"></label>
+      <label>Alamat lengkap<textarea id="caddr" rows="3" autocomplete="street-address" placeholder="Jalan, nomor rumah, RT/RW, kecamatan, kota, kode pos"></textarea></label>
       <div id="cerr" role="alert"></div>
     </div>
     <div class="cbar">
@@ -192,6 +193,8 @@ const setCols = n => {
   document.querySelectorAll("[data-cols]").forEach(x => x.classList.toggle("on", x.dataset.cols == n));
 };
 if (innerWidth > 900) setCols(3); // layar lebar: 3 kolom supaya kartu tidak raksasa
+let sortBy = ""; // "" | "asc" | "desc" (TOK-14)
+const SORTS = { asc: "Harga terendah", desc: "Harga tertinggi" };
 const cats = () => [...new Set(PRODUCTS.map(p => p.cat).filter(Boolean))];
 
 // daftar bertambah sendiri ke bawah saat penanda di dasar daftar hampir terlihat
@@ -204,6 +207,7 @@ addEventListener("scroll", autoMore, { passive: true });
 function renderGrid() {
   const q = $("q").value.toLowerCase();
   const list = PRODUCTS.filter(p => (!sel.size || sel.has(p.cat)) && (p.name + " " + p.desc).toLowerCase().includes(q));
+  if (sortBy) list.sort((a, b) => sortBy === "asc" ? a.price - b.price : b.price - a.price);
   const pages = Math.max(1, Math.ceil(list.length / PER));
   page = Math.min(page, pages);
   $("pager").hidden = page >= pages; $("pager").textContent = "Memuat barang lainnya…";
@@ -221,8 +225,10 @@ function renderGrid() {
 }
 
 function renderFilter() {
-  $("fcats").innerHTML = cats().map(c => `<label class="chip"><input type="checkbox" data-c="${esc(c)}" ${sel.has(c) ? "checked" : ""}>${esc(c)}</label>`).join("");
-  $("fbadge").hidden = !sel.size; $("fbadge").textContent = sel.size;
+  $("fcats").innerHTML = cats().map(c => `<label class="chip"><input type="checkbox" data-c="${esc(c)}" ${sel.has(c) ? "checked" : ""}>${esc(c)}</label>`).join("")
+    + Object.entries(SORTS).map(([k, l]) => `<label class="chip"><input type="checkbox" data-s="${k}" ${sortBy === k ? "checked" : ""}>${l}</label>`).join("");
+  const n = sel.size + (sortBy ? 1 : 0);
+  $("fbadge").hidden = !n; $("fbadge").textContent = n;
 }
 
 function renderCart() {
@@ -253,25 +259,26 @@ function renderCart() {
   $("ccount").textContent = `${count} barang`;
   $("total").textContent = rp(total);
   const msg = "Halo, saya mau pesan:\n" + rows.map(p => `- ${p.name} x${cart[p.id]} = ${rp(cart[p.id] * p.price)}`).join("\n")
-    + `\n\nTotal: ${rp(total)}\nKode pesanan: ${CODE}\n\nNama: ${$("cname").value.trim()}\nHP: ${phone08($("cphone").value)}\nAlamat:`;
+    + `\n\nTotal: ${rp(total)}\nKode pesanan: ${CODE}\n\nNama: ${$("cname").value.trim()}\nHP: ${phone08($("cphone").value)}\nAlamat: ${$("caddr").value.trim()}`;
   $("send").href = `https://wa.me/${WA}?text=${encodeURIComponent(msg)}`;
   document.querySelectorAll(".act[data-id]").forEach(el => { const p = PRODUCTS.find(p => p.id === el.dataset.id); if (p) el.innerHTML = actHtml(p); });
 }
 
 // PSM-10: nama dan HP pelanggan, diingat di browser; HP dinormalisasi seperti di server (+62…, 62…, 8… -> 08…)
 const phone08 = v => { let d = String(v).replace(/\D/g, ""); if (d.startsWith("62")) d = "0" + d.slice(2); else if (d.startsWith("8")) d = "0" + d; return d; };
-try { const c = JSON.parse(localStorage.cust || "{}"); $("cname").value = c.name || ""; $("cphone").value = c.phone || ""; } catch {}
-for (const id of ["cname", "cphone"]) $(id).oninput = () => {
-  try { localStorage.cust = JSON.stringify({ name: $("cname").value, phone: $("cphone").value }); } catch {}
+try { const c = JSON.parse(localStorage.cust || "{}"); $("cname").value = c.name || ""; $("cphone").value = c.phone || ""; $("caddr").value = c.address || ""; } catch {}
+for (const id of ["cname", "cphone", "caddr"]) $(id).oninput = () => {
+  try { localStorage.cust = JSON.stringify({ name: $("cname").value, phone: $("cphone").value, address: $("caddr").value }); } catch {}
   $("cerr").textContent = ""; renderCart();
 };
 // PSM-1: catat pesanan ke server; gagal pun WhatsApp tetap terbuka (tautan tidak dihentikan)
 $("send").addEventListener("click", e => {
-  const name = $("cname").value.trim(), phone = phone08($("cphone").value);
-  const bad = !name ? ["Nama penerima wajib diisi.", "cname"] : !/^08\d{8,12}$/.test(phone) ? ["Nomor HP harus nomor HP Indonesia (diawali 08).", "cphone"] : null;
+  const name = $("cname").value.trim(), phone = phone08($("cphone").value), address = $("caddr").value.trim();
+  const bad = !name ? ["Nama penerima wajib diisi.", "cname"] : !/^08\d{8,12}$/.test(phone) ? ["Nomor HP harus nomor HP Indonesia (diawali 08).", "cphone"]
+    : !address ? ["Alamat lengkap wajib diisi.", "caddr"] : null;
   if (bad) { e.preventDefault(); $("cerr").textContent = bad[0]; return $(bad[1]).focus(); }
   fetch("/api/inbox", { method: "POST", keepalive: true, headers: { "content-type": "application/json" },
-    body: JSON.stringify({ code: CODE, name, phone, items: Object.entries(cart).map(([id, qty]) => ({ id, qty })) }) }).catch(() => {});
+    body: JSON.stringify({ code: CODE, name, phone, address, items: Object.entries(cart).map(([id, qty]) => ({ id, qty })) }) }).catch(() => {});
 });
 
 document.addEventListener("click", e => {
@@ -282,7 +289,7 @@ document.addEventListener("click", e => {
   if (d.dec) { if (--cart[p.id] <= 0) delete cart[p.id]; renderCart(); }
   if (d.cols) setCols(d.cols);
 });
-$("fcats").onchange = e => { e.target.checked ? sel.add(e.target.dataset.c) : sel.delete(e.target.dataset.c); page = 1; renderFilter(); renderGrid(); };
+$("fcats").onchange = e => { if (e.target.dataset.s) sortBy = e.target.checked ? e.target.dataset.s : ""; else e.target.checked ? sel.add(e.target.dataset.c) : sel.delete(e.target.dataset.c); page = 1; renderFilter(); renderGrid(); };
 $("fbtn").onclick = () => { $("fcats").hidden = !$("fcats").hidden; };
 $("q").oninput = () => { page = 1; renderGrid(); };
 // TOK-15: keranjang = halaman sendiri di #keranjang (tetap satu berkas; tombol Kembali di browser/HP berfungsi)

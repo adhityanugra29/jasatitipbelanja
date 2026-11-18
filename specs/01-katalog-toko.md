@@ -32,16 +32,13 @@ Payment gateway. Akun pelanggan. Pelanggan memilih kurir (kurir ditentukan admin
 **Tampilan (rombak)**
 - **TOK-13** Kepala ringkas (logo kecil di samping tagline "We make shopping easy"; tanpa judul "Open Order"). Lebar isi maks 1040px. Tombol keranjang berupa pil di tengah (bukan bilah selebar layar), putih saat kosong, pink saat berisi. Tombol "Tambah" bergaris tepi pink. — ⬜ belum dicek di browser (390 dan desktop)
 
-**Urutan (usulan, menunggu persetujuan)**
-- **TOK-14** Pilihan urutan di baris pencarian: "Urutan bawaan" (sesuai data), "Harga tertinggi" (tinggi → rendah), "Harga terendah" (rendah → tinggi). Berlaku bersama pencarian dan filter, dan memuat ulang daftar dari awal (TOK-7). Barang stok habis tetap ikut diurutkan menurut harga. Tidak disimpan antar kunjungan. — 🚫 menunggu persetujuan
-
-**HP**
-- **TOK-12** Tidak ada geser samping di lebar 390. Pencarian menempel di atas saat menggulir. Keranjang muncul dari bawah; filter kategori tampil sebagai chip di bawah pencarian (TOK-5). Tombol keranjang memperhitungkan safe-area iPhone. — ✅ dicek di 390 (safe-area ⬜)
+**Urutan**
+- **TOK-14** Pilihan urutan di - **TOK-14** Pilihan urutan berupa dua chip di deretan chip filter (dibuka tombol filter), setelah chip kategori: "Harga terendah" (rendah → tinggi) dan "Harga tertinggi" (tinggi → rendah). Hanya satu aktif; ketuk lagi untuk kembali ke urutan bawaan (sesuai data). Berlaku bersama pencarian dan filter, dan memuat ulang daftar dari awal (TOK-7). Barang stok habis tetap ikut diurutkan menurut harga. Tidak disimpan antar kunjungan. — ⬜ belum diuji geser samping di lebar 390. Pencarian menempel di atas saat menggulir. Keranjang muncul dari bawah; filter kategori tampil sebagai chip di bawah pencarian (TOK-5). Tombol keranjang memperhitungkan safe-area iPhone. — ✅ dicek di 390 (safe-area ⬜)
 
 **Halaman Keranjang** (menggantikan jendela keranjang TOK-10)
 - **TOK-15** Keranjang adalah **halaman sendiri** di `/#keranjang` (tetap satu berkas `index.html`, tanpa langkah build). Tombol 🛒 membukanya; tombol Kembali di browser/HP kembali ke katalog. Jendela keranjang lama dihapus. — ✅ diuji di Chrome (CDP) lebar 390 dan 1280 dengan server demo; tombol Kembali bawaan browser ⬜
 - **TOK-16** Tiap barang menampilkan foto (atau 🛍️), nama, keterangan, harga satuan, `− n +` (🗑 di jumlah 1, `+` nonaktif di batas stok, "Sisa N" bila stok diatur), dan subtotal barang itu. Perubahan langsung memperbarui total. — ✅ diuji di Chrome (CDP) lebar 390 dan 1280 dengan server demo (barang tanpa foto); foto asli dan "Sisa N" ⬜
 - **TOK-17** Ringkasan: jumlah barang (pcs) dan **total (belum termasuk ongkir)**, dengan catatan bahwa ongkir dan kurir ditentukan admin lewat WhatsApp. — ✅ diuji di Chrome (CDP) lebar 390 dan 1280 dengan server demo
-- **TOK-18** Nama dan nomor HP penerima (PSM-10) dan tombol **Pesan via WhatsApp** (TOK-11) ada di halaman ini. Di HP, total dan tombol menempel di bawah layar (memperhitungkan safe-area iPhone). — ✅ nama kosong ditolak dan bilah bawah menempel: diuji di Chrome (CDP) lebar 390 dan 1280 dengan server demo; HP salah ⬜, safe-area iPhone ⬜
+- **TOK-18** Nama, nomor HP, dan alamat penerima (PSM-10) dan tombol **Pesan via WhatsApp** (TOK-11) ada di halaman ini. Di HP, total dan tombol menempel di bawah layar (memperhitungkan safe-area iPhone). — ✅ nama kosong ditolak dan bilah bawah menempel: diuji di Chrome (CDP) lebar 390 dan 1280 dengan server demo; HP salah ⬜, safe-area iPhone ⬜
 - **TOK-19** Keranjang kosong: tampil "Keranjang masih kosong" dan tombol kembali ke katalog. Tautan "← Lanjut belanja" ada di atas halaman. Isi keranjang tetap disimpan (TOK-9). — ✅ diuji di Chrome (CDP) lebar 390 dan 1280 dengan server demo
 - **TOK-20** Tanpa geser samping di lebar 390 dan dibuka langsung lewat alamat `/#keranjang` pun berfungsi (katalog dimuat dulu, lalu halaman keranjang). — ✅ diuji di Chrome (CDP) lebar 390 dan 1280 dengan server demo

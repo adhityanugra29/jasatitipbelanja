@@ -933,7 +933,7 @@ function openInvoice(o, from = null) { // from = pesanan masuk yang dijadikan in
   cur = o || null; pFrom = from;
   // PSM-6/PSM-11: dari pesanan, nama dan HP terisi; pelanggan lama (HP sama) juga alamat dan kotanya dari invoice terakhir
   const prev = from && lastOf(from.phone);
-  const v = o || { invoice: nextInvoice(), ...(from && { customer: from.name, phone: from.phone, address: prev?.address, city: prev?.city }) };
+  const v = o || { invoice: nextInvoice(), ...(from && { customer: from.name, phone: from.phone, address: from.address || prev?.address, city: prev && (!from.address || from.address === prev.address) ? prev.city : "" }) };
   $("ititle").textContent = o ? "Edit Invoice" : "Buat Invoice";
   IF.forEach(f => { $("i-" + f).value = v[f] || ""; });
   lines = o ? o.items.map(i => ({ ...i, discount: i.discount || "" })) : from ? from.items.map(i => ({ name: i.name, note: "", qty: i.qty, price: i.price || "", discount: "" })) : [blankLine()];
