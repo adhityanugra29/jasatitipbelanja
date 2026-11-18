@@ -17,7 +17,7 @@ Payment gateway. Akun pelanggan. Pelanggan memilih kurir (kurir ditentukan admin
 - **TOK-4** Semua teks dari data di-escape (tidak ada HTML yang lolos). — ⬜
 
 **Cari, filter, daftar**
-- **TOK-5** Pencarian memeriksa nama dan keterangan. Di bawah kolom pencarian ada dua dropdown yang selalu terlihat (tanpa tombol filter): **Urutan** (paling kiri, TOK-14) dan **Kategori**. Kategori bisa **dipilih lebih dari satu** (kotak centang); tulisannya: "Semua kategori" bila kosong, nama kategori bila 1–2, "N kategori" bila lebih. Ada tombol "Hapus pilihan" bila ada yang terpilih. Daftar langsung tersaring saat dicentang; menu menutup saat mengetuk di luarnya. — ⬜ dirombak, belum dicek di browser
+- **TOK-5** Pencarian memeriksa nama dan keterangan. Logo, pencarian, pilihan kolom, dan filter **menempel di atas layar** (tidak ikut tergulir) — ⬜ belum dicek di browser. Di bawah kolom pencarian ada dua dropdown yang selalu terlihat (tanpa tombol filter): **Urutan** (paling kiri, TOK-14) dan **Kategori**. Kategori bisa **dipilih lebih dari satu** (kotak centang); tulisannya: "Semua kategori" bila kosong, nama kategori bila 1–2, "N kategori" bila lebih. Ada tombol "Hapus pilihan" bila ada yang terpilih. Daftar langsung tersaring saat dicentang; menu menutup saat mengetuk di luarnya. — ⬜ dirombak, belum dicek di browser
 - **TOK-6** Pilihan tampilan 1/2/3 kolom, satu baris dengan pencarian dan filter. Bawaan 2 kolom; di layar >900px bawaan 3 kolom. Di layar ≤600px pilihan 3 kolom disembunyikan. — ⬜ dirombak, belum dicek ulang di browser
 - **TOK-7** Daftar bertambah sendiri ke bawah saat digulir: 12 barang per muat, tanpa tombol halaman. Mencari atau mengubah filter mengembalikan ke awal. — ⬜
 

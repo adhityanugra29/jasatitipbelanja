@@ -20,7 +20,8 @@
   .head img { height:64px; width:64px; flex:none; padding:3px; border-radius:50%; background:#fff; box-shadow:0 4px 14px #F44D9230; }
   .head p { margin:2px 0 0; font-size:.85rem; font-weight:600; color:var(--teal-d); }
   .notice { background:var(--teal-soft); color:var(--teal-d); border-radius:14px; padding:12px 14px; text-align:center; font-weight:700; margin:8px 0 12px; }
-  .bar { position:sticky; top:0; z-index:5; background:var(--bg); padding:10px 0; } /* pencarian tetap terlihat saat menggulir */
+  .top { position:sticky; top:0; z-index:5; background:var(--bg); } /* logo, pencarian, dan filter tetap terlihat saat menggulir */
+  .bar { padding:10px 0; }
   .tools { display:flex; align-items:center; gap:8px; }
   .filters { display:flex; gap:8px; padding-top:10px; }
   .dd { flex:0 1 auto; }
@@ -104,8 +105,6 @@
   .req { color:#c00; font-weight:700; }
   .cust h3 small { font-size:.8rem; }
   .cust .bad { border-color:#c00; box-shadow:0 0 0 3px #CC000022; }
-  #csaved { min-height:1.2em; margin-bottom:6px; color:var(--teal-d); font-size:.85rem; font-weight:600; }
-  #csaved.warn { color:#c00; }
   #cerr { min-height:1.3em; margin:6px 0; color:#c00; font-size:.9rem; font-weight:600; }
   .close { width:100%; margin-top:8px; padding:12px; border:0; background:none; font:inherit; color:var(--ink); cursor:pointer; }
   label.chk { display:flex; font-weight:500; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
@@ -124,6 +123,7 @@
 </head>
 <body>
 <div class="wrap" id="shop">
+  <div class="top">
   <div class="head">
     <img src="/assets/logo.png" alt="Jasa Titip Belanja">
     <div><p>We make shopping easy</p></div>
@@ -144,6 +144,7 @@
   </div>
   <div class="filters"><details id="fsortd" class="dd"><summary id="fsortl" aria-label="Urutan"></summary><div class="ddp" id="fsortp"></div></details><details id="fcat" class="dd"><summary id="fcatl" aria-label="Kategori"></summary><div class="ddp" id="fcatp"></div></details></div>
   </div>
+  </div>
 
   <main class="grid" id="grid"></main>
   <nav id="pager" hidden></nav>
@@ -161,9 +162,7 @@
       <label>Nama penerima <b class="req">*</b><input id="cname" autocomplete="name" required aria-required="true"></label>
       <label>Nomor HP (WhatsApp) <b class="req">*</b><input id="cphone" type="tel" inputmode="tel" autocomplete="tel" placeholder="08123456789" required aria-required="true"></label>
       <label>Alamat lengkap <b class="req">*</b><textarea id="caddr" rows="3" autocomplete="street-address" placeholder="Jalan, nomor rumah, RT/RW, kecamatan, kota, kode pos" required aria-required="true"></textarea></label>
-      <div id="cerr" role="alert"></div>
-      <div id="csaved" aria-live="polite"></div>
-    </div>
+      <div id="cerr" role="alert"></div>    </div>
     <div class="cbar">
       <div class="total"><span>Total (belum termasuk ongkir)<small id="ccount"></small></span><span id="total"></span></div>
       <a class="send" id="send" target="_blank" rel="noopener">Pesan via WhatsApp</a>
@@ -281,14 +280,8 @@ const CUST = ["cname", "cphone", "caddr"];
 const custErr = () => ({ cname: !$("cname").value.trim() && "Nama penerima wajib diisi.",
   cphone: !/^08\d{8,12}$/.test(phone08($("cphone").value)) && "Nomor HP harus nomor HP Indonesia (diawali 08).",
   caddr: !$("caddr").value.trim() && "Alamat lengkap wajib diisi." });
-// simpan otomatis; dibaca balik supaya penyimpanan yang diblokir browser (mode privat) ketahuan
-function saveCust() {
-  const v = JSON.stringify({ name: $("cname").value, phone: $("cphone").value, address: $("caddr").value });
-  let ok = false;
-  try { localStorage.cust = v; ok = localStorage.cust === v; } catch {}
-  $("csaved").classList.toggle("warn", !ok);
-  $("csaved").textContent = !ok ? "Tidak bisa disimpan di browser ini" : CUST.some(id => custErr()[id]) ? "" : "✓ Tersimpan di perangkat ini";
-}
+// simpan otomatis di browser; diam-diam dilewati bila penyimpanan diblokir (mode privat)
+const saveCust = () => { try { localStorage.cust = JSON.stringify({ name: $("cname").value, phone: $("cphone").value, address: $("caddr").value }); } catch {} };
 for (const id of CUST) {
   $(id).oninput = () => { $(id).classList.remove("bad"); $("cerr").textContent = ""; saveCust(); renderCart(); };
   $(id).onchange = $(id).onblur = saveCust; // isian otomatis browser kadang tanpa peristiwa input
