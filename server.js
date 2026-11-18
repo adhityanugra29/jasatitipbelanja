@@ -34,6 +34,8 @@ function body(req, max = 3e6) {
     req.on("end", () => { try { ok(JSON.parse(s)); } catch (e) { no(e); } });
   });
 }
+// INV-5: +62…, 62…, 8… -> 08…; dipakai invoice dan pesanan masuk
+const normPhone = v => { let d = String(v ?? "").replace(/\D/g, ""); if (d.startsWith("62")) d = "0" + d.slice(2); else if (d.startsWith("8")) d = "0" + d; return d.slice(0, 15); };
 const send = (res, code, obj) => { res.writeHead(code, { "content-type": "application/json" }); res.end(JSON.stringify(obj)); };
 const file = (res, p) => fs.readFile(p, (e, d) => {
   if (e) { res.writeHead(404); return res.end("Tidak ditemukan"); }
@@ -54,6 +56,9 @@ const handler = async (req, res) => {
     if (req.method === "POST" && url === "/api/inbox") {
       const d = await body(req, 2e4);
       if (!/^PSN-[A-Z0-9]{6}$/.test(d.code)) return send(res, 400, { error: "Kode pesanan tidak valid" });
+      const name = String(d.name ?? "").trim().slice(0, 100), phone = normPhone(d.phone);
+      if (!name) return send(res, 400, { error: "Nama wajib diisi" });
+      if (!/^08\d{8,12}$/.test(phone)) return send(res, 400, { error: "Nomor HP harus nomor HP Indonesia (diawali 08)" });
       const cat = (await kv("data")).products;
       const items = (Array.isArray(d.items) ? d.items : []).slice(0, 50).map(i => {
         const p = cat.find(p => p.id === String(i.id));
@@ -61,7 +66,7 @@ const handler = async (req, res) => {
       }).filter(i => i && i.qty >= 1);
       if (!items.length) return send(res, 400, { error: "Tidak ada barang yang valid" });
       const col = (await db()).collection("inbox");
-      await col.replaceOne({ _id: d.code }, { items, created: new Date().toISOString() }, { upsert: true }); // kode sama = timpa, bukan ganda
+      await col.replaceOne({ _id: d.code }, { name, phone, items, created: new Date().toISOString() }, { upsert: true }); // kode sama = timpa, bukan ganda
       const old = await col.find().sort({ created: -1 }).skip(500).toArray();
       if (old.length) await col.deleteMany({ _id: { $in: old.map(x => x._id) } });
       return send(res, 200, { ok: true });
@@ -99,7 +104,6 @@ const handler = async (req, res) => {
     if (req.method === "PUT" && url === "/api/orders") {
       const t = (v, n) => String(v ?? "").slice(0, n), date = v => /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : "";
       const num = (v, max = 1e10) => Math.min(max, Math.max(0, Math.round(Number(v) || 0)));
-      const normPhone = v => { let d = String(v ?? "").replace(/\D/g, ""); if (d.startsWith("62")) d = "0" + d.slice(2); else if (d.startsWith("8")) d = "0" + d; return d.slice(0, 15); };
       // barang: [{name, note, qty, price, discount}]; teks lama "Nama xN" diubah otomatis (harga 0 -> akan ditolak sampai diisi)
       const toItems = v => Array.isArray(v) ? v : String(v ?? "").split("\n").map(l => l.trim()).filter(Boolean).map(l => { const m = /^(.*?)\s*[x×]\s*(\d+)$/i.exec(l); return { name: m ? m[1] : l, qty: m ? +m[2] : 1 }; });
       const d = await body(req);

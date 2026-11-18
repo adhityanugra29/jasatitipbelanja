@@ -139,7 +139,8 @@ const rejected = async (fn) => { const r = await fn(); assert.strictEqual(r.stat
   // ---------- PSM pesanan masuk (specs/08-pesanan-masuk.md)
   await test("PSM", "pesanan masuk: publik hanya menulis; harga dari katalog; kode ganda ditimpa; terkunci bila sudah diinvoice", async () => {
     const data = (await call("GET", "/api/data", undefined, null)).body, orders = (await call("GET", "/api/orders")).body;
-    const pub = (b) => call("POST", "/api/inbox", b, null), codes = ["PSN-UJI001", "PSN-UJI002"];
+    const who = { name: "Ibu Uji", phone: "+62 812-3456-7890" };
+    const pub = (b) => call("POST", "/api/inbox", { ...who, ...b }, null), codes = ["PSN-UJI001", "PSN-UJI002"];
     const list = async () => (await call("GET", "/api/inbox")).body.filter(x => codes.includes(x.code));
     try {
       await call("PUT", "/api/data", { ...data, products: [{ id: "uji-p", name: "Barang Uji", price: 5000, cat: "Uji" }] });
@@ -150,6 +151,11 @@ const rejected = async (fn) => { const r = await fn(); assert.strictEqual(r.stat
       const [r] = await list();
       assert.strictEqual((await list()).length, 1);
       assert.deepStrictEqual(r.items, [{ id: "uji-p", name: "Barang Uji", price: 5000, qty: 2 }]);
+      assert.deepStrictEqual([r.name, r.phone], ["Ibu Uji", "081234567890"]); // HP dinormalisasi seperti INV-5
+      // PSM-2: nama wajib; HP harus nomor Indonesia
+      assert.strictEqual((await pub({ code: codes[1], items: body.items, name: " " })).status, 400);
+      assert.strictEqual((await pub({ code: codes[1], items: body.items, phone: "12345" })).status, 400);
+      assert.strictEqual((await pub({ code: codes[1], items: body.items, phone: undefined })).status, 400);
       assert.strictEqual((await pub({ code: codes[1], items: [{ id: "tidak-ada", qty: 1 }] })).status, 400); // tanpa barang valid
       // PSM-3: kode salah format, qty dibatasi, isi terlalu besar
       assert.strictEqual((await pub({ code: "psn-abc", items: body.items })).status, 400);

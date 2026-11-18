@@ -1,7 +1,7 @@
 // MongoDB tiruan di memori, untuk menjalankan server tanpa database (uji dan melihat tampilan). Data hilang saat server mati.
 //   ADMIN_PASSWORD=x MONGODB_URI=mock node -r ./tests/mongo-mock.js server.js
-// DEMO=1 mengisi beberapa barang contoh. Hanya mendukung perintah yang dipakai server.js.
-const Module = require("module");
+// DEMO=1 mengisi data contoh dari orders.json (invoice) lengkap dengan katalog dan pesanan masuk yang sesuai. Hanya mendukung perintah yang dipakai server.js.
+const Module = require("module"), fs = require("fs"), path = require("path");
 const cols = new Map();
 const col = name => {
   if (!cols.has(name)) cols.set(name, new Map());
@@ -17,26 +17,28 @@ const col = name => {
       toArray: async () => rows }; return c; },
   };
 };
-if (process.env.DEMO) col("kv").replaceOne({ _id: "data" }, { v: { wa: "6281234567890", notice: "", products: [
-  { id: "p1", name: "Tas Kulit Cokelat", price: 150000, cat: "Tas", desc: "", badge: "new", stock: 5, img: "" },
-  { id: "p2", name: "Dompet Mini", price: 85000, cat: "Dompet", desc: "", badge: "", stock: null, img: "" },
-  { id: "p3", name: "Sepatu Sneakers 39", price: 230000, cat: "Sepatu", desc: "", badge: "hot", stock: 2, img: "" },
-] } });
-if (process.env.DEMO) { // pesanan masuk (2 Baru, 2 sudah diinvoice: 1 cocok, 1 selisih) dan invoicenya
-  const now = Date.now(), at = min => new Date(now - min * 6e4).toISOString();
-  const it = (id, name, price, qty) => ({ id, name, price, qty });
-  const tas = it("p1", "Tas Kulit Cokelat", 150000, 1), dompet = it("p2", "Dompet Mini", 85000, 1), sepatu = it("p3", "Sepatu Sneakers 39", 230000, 1);
-  [["PSN-K7Q2XM", at(5), [{ ...tas, qty: 2 }, dompet]], ["PSN-9HT4BD", at(40), [sepatu]],
-   ["PSN-A3M8WE", at(300), [tas, { ...dompet, qty: 2 }]], ["PSN-X2C6RN", at(900), [{ ...tas, qty: 2 }, sepatu]]]
-    .forEach(([code, created, items]) => col("inbox").replaceOne({ _id: code }, { items, created }));
-  const inv = (n, code, name, items) => ({ id: "d" + n, invoice: "INV-2026110" + n, customer: name, city: "Bandung", phone: "08123456789", address: "Jl. Contoh No. " + n,
-    items: items.map(i => ({ name: i.name, note: "", qty: i.qty, price: i.price, discount: 0 })), shipping: 15000,
-    total: items.reduce((s, i) => s + i.qty * i.price, 0) + 15000, courier: "", resi: "", shipDate: "", created: "2026-11-17", shipped: "", proof: "", paidAt: "", pesananKode: code });
-  col("kv").replaceOne({ _id: "orders" }, { v: [
-    inv(1, "PSN-A3M8WE", "Ibu Sari", [tas, { ...dompet, qty: 2 }]),           // cocok
-    inv(2, "PSN-X2C6RN", "Ibu Rina", [{ ...tas, qty: 1 }, { name: "Topi", price: 50000, qty: 1 }]), // selisih: jumlah, hilang, tambahan
-  ] });
-}
+if (process.env.DEMO) try {
+  const orders = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "orders.json"), "utf8"));
+  // katalog = barang yang muncul di invoice (harga dari invoice), supaya pesanan dan invoice memakai barang yang sama
+  const price = new Map(orders.flatMap(o => o.items.map(i => [i.name, i.price])));
+  const products = [...price].map(([name, p], n) => ({ id: "p" + (n + 1), name, price: p, cat: "Contoh", desc: "", badge: "", stock: null, img: "" }));
+  const pid = name => products.find(p => p.name === name).id;
+  col("kv").replaceOne({ _id: "data" }, { v: { wa: "6281234567890", notice: "", products } });
+  // pesanan per invoice: [kode, menit yang lalu, [[barang, qty]]]. Sebagian sengaja berbeda dari invoicenya.
+  const PSN = { "INV-2026110001": ["PSN-A3M8WE", 120, [["Tote bag kulit", 1]]],                            // cocok
+    "INV-2026110002": ["PSN-D5W2KP", 200, [["Sneakers putih", 1], ["Kaos kaki", 3]]],                      // selisih: jumlah (invoice 2)
+    "INV-2026100003": ["PSN-R4N7ZQ", 3000, [["Koper kabin", 1]]],                                          // cocok
+    "INV-2026100004": ["PSN-T8K3VC", 3100, [["Sling bag", 2]]],                                            // cocok (invoice: dua baris @1)
+    "INV-2026100005": ["PSN-M6Y9HB", 3200, [["Flat shoes", 1], ["Kaos kaki", 1]]],                         // selisih: kaos kaki tidak ada di invoice
+    "INV-2026100006": ["PSN-L2J5GX", 3300, [["Tote bag kulit", 1]]] };                                     // cocok
+  const at = min => new Date(Date.now() - min * 6e4).toISOString();
+  const put = (code, min, who, items) => col("inbox").replaceOne({ _id: code }, { ...who, created: at(min), items: items.map(([name, qty]) => ({ id: pid(name), name, price: price.get(name), qty })) });
+  for (const [inv, [code, min, items]] of Object.entries(PSN)) { const o = orders.find(x => x.invoice === inv); put(code, min, { name: o.customer, phone: o.phone }, items); }
+  const sari = orders.find(x => x.customer === "Ibu Sari");
+  put("PSN-K7Q2XM", 5, { name: sari.customer, phone: sari.phone }, [["Tote bag kulit", 1], ["Flat shoes", 2]]); // Baru, pelanggan lama (HP sama dengan Ibu Sari)
+  put("PSN-9HT4BD", 40, { name: "Ibu Wulan", phone: "081298765432" }, [["Sling bag", 1]]);                     // Baru, pelanggan baru
+  col("kv").replaceOne({ _id: "orders" }, { v: orders.map(o => ({ ...o, pesananKode: PSN[o.invoice]?.[0] || "", items: o.items.map(i => ({ note: "", discount: 0, ...i })) })) });
+} catch (e) { console.error("DEMO: orders.json tidak terbaca:", e.message); }
 const mock = { MongoClient: class { connect() { return Promise.resolve({ db: () => ({ collection: col }) }); } } };
 const load = Module._load;
 Module._load = (r, ...a) => (r === "mongodb" ? mock : load(r, ...a));

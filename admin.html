@@ -356,7 +356,7 @@
       <div class="warn">Pesanan tercatat saat pelanggan menekan <b>Pesan via WhatsApp</b>. Cocokkan <b>kode pesanan</b> di chat dengan daftar ini, lalu <b>Buat Invoice</b>. Pesanan yang tidak dibalas pelanggan tetap Baru sampai Anda hapus.</div>
       <div class="stats" id="ps-stats"></div>
       <div class="otabs" id="ps-tabs"></div>
-      <div class="ofil"><input id="ps-q" placeholder="Cari kode pesanan atau barang"></div>
+      <div class="ofil"><input id="ps-q" placeholder="Cari kode, nama, HP, atau barang"></div>
       <div id="ps-list"></div>
     </section>
     <section id="v-invoice" hidden>
@@ -847,6 +847,7 @@ $("pl-table").addEventListener("click", e => {
 // ---- Pesanan Masuk (PSM-*): dicatat saat pelanggan menekan tombol WhatsApp. "Sudah diinvoice" diturunkan dari invoice (pesananKode), tidak disimpan terpisah.
 let inbox = [], pTab = "new", pFrom = null;
 const invoiceOf = p => orders.find(o => o.pesananKode === p.code);
+const lastOf = phone => phone ? [...orders].filter(o => o.phone === phone).sort((a, b) => b.created.localeCompare(a.created))[0] : undefined; // invoice terakhir nomor HP ini
 const dtime = d => new Date(d).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 // PSM-7: dibandingkan per nama barang (qty dijumlahkan); harga sengaja tidak dibandingkan
 function compare(pItems, iItems) {
@@ -869,12 +870,13 @@ function renderInbox() {
   $("ps-stats").innerHTML = stat("BARU (BELUM DIINVOICE)", nw.length, "#c00") + stat("SUDAH DIINVOICE", done.length, "#1c6b32");
   $("ps-tabs").innerHTML = tabs(pTab, [["new", "Baru", nw.length], ["done", "Sudah Diinvoice", done.length]], "ptab");
   const q = $("ps-q").value.toLowerCase();
-  const list = (pTab === "new" ? nw : done).filter(p => !q || (p.code + " " + p.items.map(i => i.name).join(" ")).toLowerCase().includes(q));
+  const list = (pTab === "new" ? nw : done).filter(p => !q || ([p.code, p.name, p.phone, ...p.items.map(i => i.name)].join(" ")).toLowerCase().includes(q));
   $("ps-list").innerHTML = !list.length ? `<p style="padding:24px;text-align:center">${inbox.length ? "Tidak ada pesanan yang cocok." : "Belum ada pesanan masuk. Pesanan muncul saat pelanggan menekan “Pesan via WhatsApp”."}</p>`
     : `<div class="ivlist">${list.map(p => { const iv = invoiceOf(p), bad = iv && compare(p.items, iv.items).some(r => r.st), c = esc(p.code);
       return `<div class="ivrow psrow ${iv ? "paid" : ""}">
         <div><b>${c}</b><br><small>${dtime(p.created)}</small></div>
-        <div class="ivtx">${esc(p.items.map(i => `${i.name} ×${i.qty}`).join(", "))}</div>
+        <div>${p.name ? `<b>${esc(p.name)}</b> <small>· ${esc(p.phone)}</small>${lastOf(p.phone) ? ` <span class="pay lunas">PELANGGAN LAMA · ${orders.filter(o => o.phone === p.phone).length} invoice</span>` : ""}` : ""}
+          <div class="ivtx">${esc(p.items.map(i => `${i.name} ×${i.qty}`).join(", "))}</div></div>
         <div class="ivtot"><b>${rpf(p.items.reduce((s, i) => s + i.qty * i.price, 0))}</b><br><small>${p.items.reduce((s, i) => s + i.qty, 0)} pcs</small></div>
         <div class="oact">${iv ? `<button class="linkbtn2" data-pa="view" data-code="${c}">${esc(iv.invoice)}</button><span class="pay ${bad ? "belum" : "lunas"}">${bad ? "⚠ SELISIH" : "✓ COCOK"}</span>`
           : `<button class="b dark" data-pa="make" data-code="${c}">Buat Invoice</button><button class="b del" data-pa="del" data-code="${c}">Hapus</button>`}</div></div>`; }).join("")}</div>`;
@@ -929,7 +931,9 @@ $("idlg").addEventListener("click", e => {
 
 function openInvoice(o, from = null) { // from = pesanan masuk yang dijadikan invoice (PSM-6)
   cur = o || null; pFrom = from;
-  const v = o || { invoice: nextInvoice() };
+  // PSM-6/PSM-11: dari pesanan, nama dan HP terisi; pelanggan lama (HP sama) juga alamat dan kotanya dari invoice terakhir
+  const prev = from && lastOf(from.phone);
+  const v = o || { invoice: nextInvoice(), ...(from && { customer: from.name, phone: from.phone, address: prev?.address, city: prev?.city }) };
   $("ititle").textContent = o ? "Edit Invoice" : "Buat Invoice";
   IF.forEach(f => { $("i-" + f).value = v[f] || ""; });
   lines = o ? o.items.map(i => ({ ...i, discount: i.discount || "" })) : from ? from.items.map(i => ({ name: i.name, note: "", qty: i.qty, price: i.price || "", discount: "" })) : [blankLine()];
@@ -1033,7 +1037,7 @@ function renderOrders() {
         <div><small>KURIR</small><b>${o.courier ? esc(o.courier) : `<span class="mut">Belum dipilih</span>`}</b>${o.resi ? `<br><small class="rs">Resi ${esc(o.resi)}</small>` : ""}</div>
         <div><small>JADWAL KIRIM</small><b>${dfmt(o.shipDate)}</b></div>
         <div><small>DIBAYAR</small><span class="pay lunas">LUNAS</span> <small class="rs">${dfmt(o.paidAt)}</small></div></div>
-      <div class="oact plf">${o.shipped ? "" : btn("ship", o, "Tandai Sudah Kirim", "dark")}${dots("ship", o)}</div></div>`; }).join("")
+      <div class="oact plf">${btn("label", o, "Cetak Label")}${o.shipped ? "" : btn("ship", o, "Tandai Sudah Kirim", "dark")}${dots("ship", o)}</div></div>`; }).join("")
     : `<p style="padding:24px;text-align:center">${all.length ? "Tidak ada pesanan yang cocok." : "Belum ada pesanan siap kirim. Pesanan masuk otomatis setelah invoice dibayar."}</p>`;
 }
 
@@ -1079,6 +1083,7 @@ function openLabel(o) {
     <div class="lh"><img src="/assets/logo.png" alt=""><div><b>LABEL PENGIRIMAN</b><br><span>${esc(o.invoice)}</span></div></div>
     <div class="ls"><small>PENERIMA</small><div class="ln">${esc(o.customer)}</div><div class="lp">${esc(maskPhone(o.phone))}</div></div>
     <div class="ls"><small>ALAMAT</small><div class="la">${esc(o.address)}${o.city ? "\n" + esc(o.city) : ""}</div></div>
+    <div class="ls"><small>DIKIRIM VIA</small><div class="ln">${esc(o.courier.toUpperCase())}</div></div>
     <div class="ls"><small>ISI PAKET</small><table>${items.map(i => `<tr><td>${esc(maskName(i.name))}</td><td>${i.qty}x</td></tr>`).join("")}
       <tr class="lt"><td>Total</td><td>${total} pcs</td></tr></table></div>`;
   $("ldlg").showModal();
@@ -1088,7 +1093,7 @@ $("lclose").onclick = () => $("ldlg").close();
 
 async function shipAction(a, o) {
   if (a === "view") return openInvoiceView(o);
-  if (a === "label") return openLabel(o);
+  if (a === "label") { if (!o.courier) { say("Isi kurir dulu agar tertulis di label.", true); return openShip(o); } return openLabel(o); }
   if (a === "ship" || a === "set") return openShip(o);
   if (a === "unship") { o.shipped = ""; await saveOrders(); }
 }
@@ -1112,8 +1117,8 @@ let popFor = null;
 function popItems(ctx, o) {
   const act = ctx === "inv"
     ? (o.paidAt ? (o.shipped ? "" : `<button data-ia="unpay">Batal bayar</button>`) : `<button data-ia="edit">Edit invoice</button>`)
-    : `<button data-oa="label">🏷️ Cetak label</button>` + (o.shipped ? `<button data-oa="unship">Batal kirim</button>` : `<button data-oa="set">Atur kurir &amp; jadwal</button>`);
-  const docs = `<button data-${ctx === "inv" ? "ia" : "oa"}="view">📄 Lihat / cetak invoice</button>` + (o.proof ? `<button data-doc="${esc(o.proof)}">🧾 Lihat bukti bayar</button>` : "");
+    : (o.shipped ? `<button data-oa="unship">Batal kirim</button>` : `<button data-oa="set">Atur kurir &amp; jadwal</button>`);
+  const docs = `<button data-${ctx === "inv" ? "ia" : "oa"}="view">Lihat / cetak invoice</button>` + (o.proof ? `<button data-doc="${esc(o.proof)}">Lihat bukti bayar</button>` : "");
   const del = ctx === "inv" && !o.paidAt ? `<button class="danger" data-ia="del">Hapus invoice</button>` : "";
   return act + docs + del || `<button disabled>Tidak ada aksi</button>`;
 }
