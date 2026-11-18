@@ -23,7 +23,9 @@
   .bar { position:sticky; top:0; z-index:5; background:var(--bg); padding:10px 0; } /* pencarian tetap terlihat saat menggulir */
   .tools { display:flex; align-items:center; gap:8px; }
   .filters { display:flex; gap:8px; padding-top:10px; }
-  .filters select { flex:1; min-width:0; padding:11px 36px 11px 16px; font:inherit; font-weight:600; color:var(--ink); background:#fff url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%277%27 fill=%27none%27 stroke=%27%23D32F82%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Cpath d=%27M1 1l5 5 5-5%27/%3E%3C/svg%3E") no-repeat right 14px center; border:1.5px solid var(--line); border-radius:99px; appearance:none; -webkit-appearance:none; cursor:pointer; box-shadow:0 2px 10px #0E3B430D; }
+  .filters select { flex:0 1 auto; }
+  @media (max-width:600px) { .filters select { flex:1; } }
+  .filters select { min-width:0; padding:9px 34px 9px 16px; font:inherit; font-size:.92rem; font-weight:600; color:var(--ink); background:#fff url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%277%27 fill=%27none%27 stroke=%27%23D32F82%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Cpath d=%27M1 1l5 5 5-5%27/%3E%3C/svg%3E") no-repeat right 13px center; border:1.5px solid var(--line); border-radius:99px; appearance:none; -webkit-appearance:none; cursor:pointer; box-shadow:0 2px 10px #0E3B430D; }
   .filters select:focus-visible { outline:2px solid var(--pink-d); outline-offset:2px; }
   .search { flex:1; display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid var(--line); border-radius:99px; padding:0 18px; color:var(--pink-d); box-shadow:0 2px 10px #0E3B430D; }
   .search:focus-within { border-color:var(--pink); box-shadow:0 0 0 4px #F44D9222; }
@@ -185,7 +187,7 @@ const setCols = n => {
   document.querySelectorAll("[data-cols]").forEach(x => x.classList.toggle("on", x.dataset.cols == n));
 };
 if (innerWidth > 900) setCols(3); // layar lebar: 3 kolom supaya kartu tidak raksasa
-let sortBy = ""; // "" | "asc" | "desc" (TOK-14)
+let sortBy = "desc"; // "desc" | "asc" (TOK-14): awal = harga tertinggi
 const SORTS = { asc: "Harga terendah", desc: "Harga tertinggi" };
 const cats = () => [...new Set(PRODUCTS.map(p => p.cat).filter(Boolean))];
 
@@ -199,7 +201,7 @@ addEventListener("scroll", autoMore, { passive: true });
 function renderGrid() {
   const q = $("q").value.toLowerCase();
   const list = PRODUCTS.filter(p => (!sel.size || sel.has(p.cat)) && (p.name + " " + p.desc).toLowerCase().includes(q));
-  if (sortBy) list.sort((a, b) => sortBy === "asc" ? a.price - b.price : b.price - a.price);
+  list.sort((a, b) => sortBy === "asc" ? a.price - b.price : b.price - a.price);
   const pages = Math.max(1, Math.ceil(list.length / PER));
   page = Math.min(page, pages);
   $("pager").hidden = page >= pages; $("pager").textContent = "Memuat barang lainnya…";
@@ -217,7 +219,7 @@ function renderGrid() {
 }
 
 function renderFilter() {
-  $("fsort").innerHTML = `<option value="">Urutan bawaan</option>` + Object.entries(SORTS).map(([k, l]) => `<option value="${k}" ${sortBy === k ? "selected" : ""}>${l}</option>`).join("");
+  $("fsort").innerHTML = Object.entries(SORTS).map(([k, l]) => `<option value="${k}" ${sortBy === k ? "selected" : ""}>${l}</option>`).join("");
   $("fcat").innerHTML = `<option value="">Semua kategori</option>` + cats().map(c => `<option value="${esc(c)}" ${sel.has(c) ? "selected" : ""}>${esc(c)}</option>`).join("");
 }
 

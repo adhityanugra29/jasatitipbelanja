@@ -33,7 +33,7 @@ Payment gateway. Akun pelanggan. Pelanggan memilih kurir (kurir ditentukan admin
 - **TOK-13** Kepala ringkas (logo kecil di samping tagline "We make shopping easy"; tanpa judul "Open Order"). Lebar isi maks 1040px. Tombol keranjang berupa pil di tengah (bukan bilah selebar layar), putih saat kosong, pink saat berisi. Tombol "Tambah" bergaris tepi pink. — ⬜ belum dicek di browser (390 dan desktop)
 
 **Urutan**
-- **TOK-14** Dropdown **Urutan** di paling kiri: "Urutan bawaan" (sesuai data), "Harga terendah" (rendah → tinggi), "Harga tertinggi" (tinggi → rendah). Berlaku bersama pencarian dan kategori, dan memuat ulang daftar dari awal (TOK-7). Barang stok habis tetap ikut diurutkan menurut harga. Tidak disimpan antar kunjungan. — ⬜ belum diuji
+- **TOK-14** Dropdown **Urutan** di paling kiri, tanpa opsi "bawaan": **Harga tertinggi** (tinggi → rendah, **pilihan awal**) dan **Harga terendah** (rendah → tinggi). Berlaku bersama pencarian dan kategori, dan memuat ulang daftar dari awal (TOK-7). Barang stok habis tetap ikut diurutkan menurut harga. Tidak disimpan antar kunjungan (setiap kunjungan mulai dari Harga tertinggi). — ⬜ belum diuji
 
 **Halaman Keranjang** (menggantikan jendela keranjang TOK-10)
 - **TOK-15** Keranjang adalah **halaman sendiri** di `/#keranjang` (tetap satu berkas `index.html`, tanpa langkah build). Tombol 🛒 membukanya; tombol Kembali di browser/HP kembali ke katalog. Jendela keranjang lama dihapus. — ✅ diuji di Chrome (CDP) lebar 390 dan 1280 dengan server demo; tombol Kembali bawaan browser ⬜
