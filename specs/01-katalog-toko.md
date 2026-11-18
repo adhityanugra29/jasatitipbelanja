@@ -37,3 +37,11 @@ Payment gateway. Akun pelanggan. Pelanggan memilih kurir (kurir ditentukan admin
 
 **HP**
 - **TOK-12** Tidak ada geser samping di lebar 390. Pencarian menempel di atas saat menggulir. Keranjang dan filter muncul dari bawah. Tombol keranjang memperhitungkan safe-area iPhone. — ✅ dicek di 390 (safe-area ⬜)
+
+**Halaman Keranjang** (draf, menunggu persetujuan; menggantikan jendela keranjang TOK-10)
+- **TOK-13** Keranjang adalah **halaman sendiri** di `/#keranjang` (tetap satu berkas `index.html`, tanpa langkah build). Tombol 🛒 membukanya; tombol Kembali di browser/HP kembali ke katalog. Jendela keranjang lama dihapus. — 🚫
+- **TOK-14** Tiap barang menampilkan foto (atau 🛍️), nama, keterangan, harga satuan, `− n +` (🗑 di jumlah 1, `+` nonaktif di batas stok, "Sisa N" bila stok diatur), dan subtotal barang itu. Perubahan langsung memperbarui total. — 🚫
+- **TOK-15** Ringkasan: jumlah barang (pcs) dan **total (belum termasuk ongkir)**, dengan catatan bahwa ongkir dan kurir ditentukan admin lewat WhatsApp. — 🚫
+- **TOK-16** Nama dan nomor HP penerima (PSM-10) dan tombol **Pesan via WhatsApp** (TOK-11) ada di halaman ini. Di HP, total dan tombol menempel di bawah layar (memperhitungkan safe-area iPhone). — 🚫
+- **TOK-17** Keranjang kosong: tampil "Keranjang masih kosong" dan tombol kembali ke katalog. Tautan "← Lanjut belanja" ada di atas halaman. Isi keranjang tetap disimpan (TOK-9). — 🚫
+- **TOK-18** Tanpa geser samping di lebar 390 dan dibuka langsung lewat alamat `/#keranjang` pun berfungsi (katalog dimuat dulu, lalu halaman keranjang). — 🚫

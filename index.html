@@ -56,7 +56,11 @@
   #pager { text-align:center; margin:20px 0 0; font-weight:700; opacity:.6; }
   .empty { padding:24px; text-align:center; grid-column:1/-1; }
   #fab { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom)); width:min(440px,calc(100% - 24px)); padding:15px; border:0; border-radius:99px; background:linear-gradient(90deg,var(--pink-d),var(--pink)); color:#fff; font:inherit; font-size:1rem; font-weight:700; box-shadow:0 8px 24px #D32F8260; cursor:pointer; }
-  #fab.empty { background:#fff; color:var(--ink); border:1.5px solid var(--line); box-shadow:0 4px 16px #0E3B431F; font-weight:600; }
+  #fab.empty { display:flex; align-items:center; gap:12px; padding:8px 20px 8px 8px; background:var(--pink-soft); color:var(--ink); border:1.5px solid #fff; box-shadow:0 6px 20px #0E3B431F; text-align:left; }
+  #fab .eic { flex:none; width:44px; height:44px; border-radius:50%; background:#fff; color:var(--pink-d); display:grid; place-items:center; box-shadow:0 2px 8px #D32F8230; }
+  #fab .eic svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  #fab .et { display:flex; flex-direction:column; line-height:1.25; }
+  #fab .et small { font-weight:500; opacity:.65; font-size:.8rem; }
   dialog { width:min(520px,94vw); border:0; border-radius:24px; padding:20px; background:var(--bg); color:var(--ink); font-family:inherit; }
   dialog::backdrop { background:#0E3B4399; }
   dialog h2 { margin-top:0; font-family:"Plus Jakarta Sans",sans-serif; font-weight:800; }
@@ -203,7 +207,8 @@ function renderCart() {
   const count = rows.reduce((s, p) => s + cart[p.id], 0);
   const total = rows.reduce((s, p) => s + cart[p.id] * p.price, 0);
   $("fab").classList.toggle("empty", !count);
-  $("fab").textContent = count ? `🛒 Lihat Keranjang (${count}) · ${rp(total)}` : "🛒 Keranjang masih kosong";
+  $("fab").innerHTML = count ? `🛒 Lihat Keranjang (${count}) · ${rp(total)}`
+    : `<span class="eic"><svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 8H6"/></svg></span><span class="et">Keranjang masih kosong<small>Ketuk + pada barang untuk mulai belanja</small></span>`;
   $("items").innerHTML = rows.map(p => `
     <div class="row"><span>${esc(p.name)}<br><small>${rp(p.price)}</small></span>
       <button data-dec="${esc(p.id)}" aria-label="${cart[p.id] === 1 ? "Hapus dari keranjang" : "Kurangi"}">${cart[p.id] === 1 ? "🗑" : "−"}</button><b>${cart[p.id]}</b><button data-inc="${esc(p.id)}" ${cart[p.id] >= max(p) ? "disabled" : ""}>+</button></div>`).join("")
