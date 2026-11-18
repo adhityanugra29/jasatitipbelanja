@@ -20,7 +20,7 @@ Pesanan masuk otomatis dari WhatsApp. Status DP/cicilan. Stok berkurang otomatis
 - **INV-5** HP dinormalisasi: `+62…`, `62…`, `8…` → `08…`. Hanya nomor HP Indonesia. — ✅ server (API-3)
 
 **Halaman**
-- **INV-6** Halaman Invoice: kartu ringkasan (jumlah belum dibayar, tagihan belum dibayar, jumlah sudah dibayar), tab Belum/Sudah Dibayar, pencarian, filter bulan; daftar bertambah ke bawah (15 per muat). Ada dua tampilan (INV-11, INV-12), tanpa geser samping di komputer maupun HP. — ✅ diuji di Chrome (1280 dan 390) dengan server tiruan dan data contoh; belum dengan data asli
+- **INV-6** Halaman Invoice: kartu ringkasan (jumlah belum dibayar, tagihan belum dibayar, jumlah sudah dibayar), tab Belum/Sudah Dibayar, pencarian, filter bulan; halaman bernomor, 10 per halaman (PAG-1). Ada dua tampilan (INV-11, INV-12), tanpa geser samping di komputer maupun HP. — ✅ diuji di Chrome (1280 dan 390) dengan server tiruan dan data contoh; belum dengan data asli
 - **INV-7** Menu ⋮ per baris: Edit invoice / Batal bayar, Lihat/cetak invoice, Lihat bukti bayar, Hapus invoice (merah, hanya belum dibayar). Nomor invoice bisa diklik untuk membuka invoice. — ⬜
 
 **Invoice buatan sistem**

@@ -12,7 +12,7 @@ Kategori dan kurir sebagai daftar terkelola (usulan, lihat `keputusan.md`). Bany
 
 **Akses dan daftar**
 - **KAT-1** Halaman admin meminta password sebelum data apa pun dimuat. — ✅ login lewat Chrome headless
-- **KAT-2** Katalog admin berbentuk kartu (foto, nama, keterangan, harga, stok, badge aktif) dengan tombol Edit dan Hapus. Daftar bertambah sendiri ke bawah, 12 per muat. — ⬜
+- **KAT-2** Katalog admin berbentuk kartu (foto, nama, keterangan, harga, stok, badge aktif) dengan tombol Edit dan Hapus. Daftar berhalaman, 10 per halaman (PAG-1). — ⬜
 - **KAT-3** Tidak ada tombol simpan global. Perubahan katalog langsung tersimpan ke server. — ⬜
 
 **Tambah produk** (satu alur untuk 1 sampai 30 foto)

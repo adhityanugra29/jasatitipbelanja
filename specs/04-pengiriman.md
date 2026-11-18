@@ -13,7 +13,7 @@ Pelacakan resi otomatis ke ekspedisi. Pelanggan memilih kurir. Resi dan data pen
 **Daftar**
 - **KIR-1** Pengiriman hanya berisi invoice yang **sudah dibayar**. — ✅ dijaga server (API-4c); tampilan dicek di 390
 - **KIR-2** Kartu ringkasan: Hari ini, Terlambat, Terjadwal, Belum dijadwalkan (dihitung dari invoice belum dikirim). Status baris: "Terlambat N hari", "Hari ini", "Terjadwal <tgl>", "Belum Dijadwalkan". Urutan: terlambat → hari ini → terjadwal → belum dijadwalkan. — ✅ tampilan dicek di 390; urutan ⬜
-- **KIR-3** Tab Perlu Dikirim / Sudah Dikirim dengan jumlahnya; pencarian (pelanggan, invoice, kota, resi); filter bulan dan kurir; daftar bertambah ke bawah (15 per muat). Di HP tabel menjadi kartu. — ✅ tab/filter terlihat di 390; pencarian dan gulir ⬜
+- **KIR-3** Tab Perlu Dikirim / Sudah Dikirim dengan jumlahnya; pencarian (pelanggan, invoice, kota, resi); filter bulan dan kurir; halaman bernomor, 10 per halaman (PAG-1). Di HP tabel menjadi kartu. — ✅ tab/filter terlihat di 390; pencarian dan gulir ⬜
 - **KIR-4** Tombol **Cetak Label** langsung di tiap kartu (tidak di menu). Menu ⋮, tanpa ikon: Atur kurir & jadwal / Batal kirim, Lihat/cetak invoice, Lihat bukti bayar. — ⬜
 
 **Kurir dan kirim**

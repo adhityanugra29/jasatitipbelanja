@@ -25,6 +25,7 @@ Format: tanggal, keputusan, alasan. Yang masih terbuka ada di bagian bawah.
 - **2026-11-17 — Halaman Invoice punya dua tampilan, Daftar dan Gambar, pilihan diingat per browser.** Gambar menampilkan foto 2 barang teratas. *Alasan:* permintaan pemilik toko agar pengguna bisa memilih.
 - **2026-11-17 — Pesanan dicatat di sistem saat tombol "Pesan via WhatsApp" ditekan (menu Pesanan Masuk), diberi kode `PSN-XXXXXX`, dan dicocokkan dengan invoice.** Invoice tetap dibuat admin. Pesanan yang tidak diinvoice dibiarkan, dihapus manual. *Alasan:* admin perlu membandingkan isi chat WhatsApp dengan pesanan dan invoice. Spec: [08](08-pesanan-masuk.md).
 
+- **2026-11-18 — Daftar di admin (Katalog, Invoice, Pengiriman, Pelanggan, Pesanan Masuk) memakai halaman bernomor, maksimal 10 baris per halaman.** Toko pelanggan tetap gulir tak terbatas. *Alasan:* permintaan pemilik toko; membalik keputusan 2026-11-03 hanya untuk admin. Spec: [09](09-paginasi-admin.md).
 ## Terbuka (belum diputuskan)
 
 - Tab **Kategori** dan **Kurir** sebagai daftar terkelola di Pengaturan (ada di contoh desain).

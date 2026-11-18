@@ -281,7 +281,14 @@
   .otable table { min-width:940px; }
   .otable td { padding:14px 12px; }
   .otable tbody tr:hover { background:var(--bg); }
-  .pgr, #pager { text-align:center; margin-top:16px; font-weight:700; opacity:.6; }
+  /* paginasi (PAG-1..4): maksimal 10 baris per halaman */
+  .pgn { display:flex; flex-direction:column; align-items:center; gap:8px; margin:18px 0 6px; }
+  .pgn small { font-weight:600; opacity:.7; }
+  .pgb { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; }
+  .pg { min-width:42px; height:42px; padding:0 10px; border:1.5px solid var(--line); border-radius:12px; background:#fff; color:var(--ink); font:inherit; font-weight:700; cursor:pointer; }
+  .pg.on { background:var(--pink-d); border-color:var(--pink-d); color:#fff; }
+  .pg:disabled { opacity:.35; cursor:not-allowed; }
+  #list, #iv-table, #otable, #pl-table, #ps-list { scroll-margin-top:72px; }
   @media (max-width:800px) { .stats { grid-template-columns:1fr 1fr; } .ofil { grid-template-columns:1fr; } }
   @media (max-width:800px) {
     #side { transform:translateX(-100%); }
@@ -396,7 +403,6 @@
     <section id="v-katalog">
       <div class="pagehead"><h2>Katalog</h2><button class="b dark" id="add">+ Tambah Barang</button></div>
       <div id="list"></div>
-      <nav id="pager" hidden></nav>
     </section>
     <section id="v-bulk" hidden>
       <div class="pagehead"><div><h2>Tambah Produk</h2><small>Unggah satu atau banyak foto sekaligus, lalu isi data tiap produk satu per satu</small></div><button class="b" id="wback">← Katalog</button></div>
@@ -419,7 +425,6 @@
       <div class="ofil"><input id="iv-q" placeholder="Cari pelanggan, no. invoice, kota"><select id="iv-m"></select>
         <div class="vseg"><button data-iview="list">☰ Daftar</button><button data-iview="img">▦ Gambar</button></div></div>
       <div id="iv-table"></div>
-      <nav id="iv-pager" class="pgr" hidden></nav>
     </section>
     <section id="v-pengiriman" hidden>
       <div class="pagehead"><h2>Pengiriman</h2></div>
@@ -430,7 +435,6 @@
         <select id="om"></select><select id="ok"></select>
       </div>
       <div class="plgrid" id="otable"></div>
-      <nav id="opager" class="pgr" hidden></nav>
     </section>
     <section id="v-pelanggan" hidden>
       <div class="pagehead"><h2>Pelanggan</h2></div>
@@ -519,7 +523,7 @@
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
-const PER = 12; // barang yang dimuat setiap kali menggulir ke bawah
+const PER = 10; // PAG-1: baris (kartu) per halaman di semua daftar admin
 let page = 1, pw = "", data = { wa: "", notice: "", products: [] };
 
 async function api(method, url, body) {
@@ -533,19 +537,17 @@ function render() {
   $("wa").value = data.wa; $("notice").value = data.notice || "";
   $("tcount").textContent = data.products.length;
   $("cats").innerHTML = [...new Set(data.products.map(p => p.cat).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join("");
-  const pages = Math.max(1, Math.ceil(data.products.length / PER));
-  page = Math.min(page, pages);
-  $("pager").hidden = page >= pages; $("pager").textContent = "Memuat barang lainnya…";
-  requestAnimationFrame(autoMore);
-  $("list").innerHTML = `<div class="cards">` + data.products.slice(0, page * PER).map((p, i) => { return `
+  page = clampPage(page, data.products.length);
+  const start = (page - 1) * PER; // PAG-4: indeks global, supaya Edit/Hapus menunjuk barang yang benar di halaman mana pun
+  $("list").innerHTML = `<div class="cards">` + data.products.slice(start, start + PER).map((p, i) => { return `
     <div class="pc">
       ${p.img ? `<img src="${esc(p.img)}" alt="">` : `<div class="ph">🛍️</div>`}
       <h3>${esc(p.name || "(tanpa nama)")}</h3>${p.badge ? `<span class="chip bdg ${p.badge}">${BADGE_LABEL[p.badge]}</span>` : ""}
       <div class="sub">${esc(p.desc || p.cat)}</div>
       <div class="price">Rp${(p.price || 0).toLocaleString("id-ID")}</div>
       <div class="st ${p.stock === 0 ? "out" : ""}">${p.stock == null ? "Stok tidak terbatas" : p.stock > 0 ? "Sisa " + p.stock : "Stok habis"}</div>
-      <div class="acts"><button class="b" data-edit="${i}">Edit</button><button class="b del" data-del="${i}">Hapus</button></div>
-    </div>`; }).join("") + `</div>`;
+      <div class="acts"><button class="b" data-edit="${start + i}">Edit</button><button class="b del" data-del="${start + i}">Hapus</button></div>
+    </div>`; }).join("") + `</div>` + pagerHtml("kat", page, data.products.length);
   if (!data.products.length) $("list").innerHTML = "<p>Belum ada barang. Klik “+ Tambah Barang”.</p>";
 }
 
@@ -802,21 +804,28 @@ document.addEventListener("keydown", e => { if (e.ctrlKey && e.key === "Enter" &
 // ===== invoice & pengiriman =====
 // alur: invoice dibuat (belum dibayar) -> bukti bayar diunggah -> otomatis masuk Pengiriman -> dikirim (kurir + resi)
 let orders = [], iTab = "unpaid", iPage = 1, oTab = "todo", oPage = 1, cur = null;
-const OPER = 15; // baris yang dimuat setiap kali menggulir ke bawah
 const today = () => new Date().toLocaleDateString("sv");
 const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
 const dfmt = d => d ? new Date(d + "T00:00").toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : "-";
 const rpf = n => "Rp" + (n || 0).toLocaleString("id-ID");
 const newId = () => Date.now() + "-" + Math.random().toString(36).slice(2, 6);
 const renderAll = () => { renderInvoices(); renderOrders(); renderCustomers(); renderInbox(); };
-// daftar bertambah sendiri ke bawah saat penanda di dasar daftar yang sedang terlihat hampir muncul
-function autoMore() {
-  const near = el => !el.hidden && el.offsetParent !== null && el.getBoundingClientRect().top < innerHeight + 300;
-  if (near($("pager"))) { page++; render(); }
-  else if (near($("iv-pager"))) { iPage++; renderInvoices(); }
-  else if (near($("opager"))) { oPage++; renderOrders(); }
+// PAG-2: kontrol halaman (jendela 5 angka); tidak tampil bila datanya <= PER
+const clampPage = (pg, total) => Math.min(Math.max(1, pg), Math.max(1, Math.ceil(total / PER)));
+function pagerHtml(key, pg, total) {
+  const pages = Math.ceil(total / PER); if (pages <= 1) return "";
+  const lo = Math.max(1, Math.min(pg - 2, pages - 4)), hi = Math.min(pages, lo + 4);
+  const btn = (to, label, aria, off, on) => `<button type="button" class="pg${on ? " on" : ""}" data-pg="${key}" data-to="${to}" aria-label="${aria}" ${off ? "disabled" : ""}${on ? ' aria-current="page"' : ""}>${label}</button>`;
+  let nums = ""; for (let i = lo; i <= hi; i++) nums += btn(i, i, "Halaman " + i, false, i === pg);
+  return `<nav class="pgn" aria-label="Halaman"><small>Menampilkan ${(pg - 1) * PER + 1}–${Math.min(total, pg * PER)} dari ${total}</small><div class="pgb">${btn(pg - 1, "‹", "Halaman sebelumnya", pg <= 1)}${nums}${btn(pg + 1, "›", "Halaman berikutnya", pg >= pages)}</div></nav>`;
 }
-addEventListener("scroll", autoMore, { passive: true });
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-pg]"); if (!b || b.disabled) return;
+  const k = b.dataset.pg, to = +b.dataset.to;
+  if (k === "kat") { page = to; render(); } else if (k === "inv") { iPage = to; renderInvoices(); } else if (k === "ship") { oPage = to; renderOrders(); }
+  else if (k === "cust") { cPage = to; renderCustomers(); } else if (k === "inbox") { pPage = to; renderInbox(); }
+  $({ kat: "list", inv: "iv-table", ship: "otable", cust: "pl-table", inbox: "ps-list" }[k]).scrollIntoView({ block: "start" }); // PAG-4
+});
 const monthOpts = ms => [...new Set(ms.filter(Boolean))].sort().reverse().map(m => [m, new Date(m + "-01T00:00").toLocaleDateString("id-ID", { month: "long", year: "numeric" })]);
 const tabs = (cur, items, attr) => items.map(([k, l, n]) => `<button class="${cur === k ? "on" : ""}" data-${attr}="${k}">${l} <span>${n}</span></button>`).join("");
 const dots = (ctx, o) => `<button class="dots" data-menu="${ctx}" data-oid="${esc(o.id)}" aria-label="Menu lainnya">⋮</button>`;
@@ -854,17 +863,14 @@ function renderInvoices() {
   const list = (iTab === "unpaid" ? unpaid : paid)
     .filter(o => (!q || [o.customer, o.invoice, o.city].join(" ").toLowerCase().includes(q)) && (!m || o.created.slice(0, 7) === m))
     .sort((a, b) => iTab === "paid" ? b.paidAt.localeCompare(a.paidAt) : a.created.localeCompare(b.created));
-  const pages = Math.max(1, Math.ceil(list.length / OPER));
-  iPage = Math.min(iPage, pages);
-  $("iv-pager").hidden = iPage >= pages; $("iv-pager").textContent = "Memuat data lainnya…";
-  requestAnimationFrame(autoMore);
+  iPage = clampPage(iPage, list.length);
   const btn = (a, o, label, cls = "sm") => `<button class="b ${cls}" data-ia="${a}" data-oid="${esc(o.id)}">${label}</button>`;
   document.querySelectorAll("[data-iview]").forEach(b => b.classList.toggle("on", b.dataset.iview === iView));
   const no = o => `<button class="linkbtn2" data-ia="view" data-oid="${esc(o.id)}">${esc(o.invoice)}</button>`;
   const status = o => o.paidAt ? `<span class="pay lunas">LUNAS</span>` : `<span class="pay belum">BELUM BAYAR</span>`;
   const kirim = o => o.paidAt ? `${dfmt(o.paidAt)} · ${o.shipped ? "Sudah dikirim" : "Menunggu kirim"}` : "";
   const acts = o => `<div class="oact">${o.paidAt ? "" : btn("pay", o, "Tandai Sudah Bayar", "dark")}${dots("inv", o)}</div>`;
-  const shown = list.slice(0, iPage * OPER);
+  const shown = list.slice((iPage - 1) * PER, iPage * PER);
   // INV-11 Daftar / INV-12 Gambar
   $("iv-table").innerHTML = !list.length ? `<p style="padding:24px;text-align:center">${orders.length ? "Tidak ada invoice yang cocok." : "Belum ada invoice. Klik “+ Buat Invoice”."}</p>`
     : iView === "list" ? `<div class="ivlist">${shown.map(o => `<div class="ivrow ${o.paidAt ? "paid" : ""}">
@@ -877,6 +883,7 @@ function renderInvoices() {
         <div class="ivbody">${no(o)} <small>· ${dfmt(o.created)}</small><b>${esc(o.customer)}</b><small>${esc(o.city || "-")}${o.paidAt ? " · " + kirim(o) : ""}</small>
           <div class="ivtx">${esc(o.items.slice(0, 2).map(i => `${i.name}${i.note ? ` (${i.note})` : ""} ×${i.qty}`).join(", "))}</div></div>
         <div class="ivfoot"><b>${rpf(o.total)}</b>${acts(o)}</div></div>`).join("")}</div>`;
+  $("iv-table").insertAdjacentHTML("beforeend", pagerHtml("inv", iPage, list.length));
 }
 // foto barang dari katalog, dicocokkan lewat nama (pesanan tidak menyimpan id produk); dipakai juga oleh formulir pengiriman
 // shortcut: cocok hanya bila nama persis sama (nama, atau nama + catatan); tak cocok = ikon 🛍️
@@ -885,7 +892,7 @@ const picOf = i => { const k = s => (s || "").trim().toLowerCase(), n = k(i.name
 let iView = "list"; try { iView = localStorage.getItem("invView") === "img" ? "img" : "list"; } catch { } // INV-13
 
 // ---- Pelanggan (PLG-*): diturunkan dari invoice, satu pelanggan = satu nomor HP; tidak ada data baru disimpan
-let plOpen = "";
+let plOpen = "", cPage = 1;
 function customers() {
   const m = new Map();
   for (const o of [...orders].sort((a, b) => b.created.localeCompare(a.created))) { // terbaru dulu: data kontak = invoice terbaru
@@ -899,15 +906,17 @@ function renderCustomers() {
   const all = customers(), q = $("pl-q").value.toLowerCase();
   $("pl-stats").innerHTML = stat("PELANGGAN", all.length) + stat("PELANGGAN ULANG (≥2 INVOICE)", all.filter(c => c.inv.length > 1).length) + stat("TOTAL BELANJA (LUNAS)", rpf(all.reduce((s, c) => s + c.spent, 0)), "var(--teal-d)");
   const list = all.filter(c => !q || [c.name, c.phone, c.city].join(" ").toLowerCase().includes(q));
-  $("pl-table").innerHTML = list.length ? list.map(c => `<div class="plc ${plOpen === c.phone ? "open" : ""}">
+  cPage = clampPage(cPage, list.length);
+  $("pl-table").innerHTML = list.length ? list.slice((cPage - 1) * PER, cPage * PER).map(c => `<div class="plc ${plOpen === c.phone ? "open" : ""}">
       <div class="plh"><span class="av">${esc(ini(c.name))}</span>
         <div class="plm"><b>${esc(c.name)}</b><small>${esc(c.city || "-")} · ${esc(c.phone)}</small></div>
         <a class="wa" target="_blank" rel="noopener" href="https://wa.me/62${esc(c.phone.slice(1))}" aria-label="WhatsApp" title="Chat WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg></a></div>
       <div class="pls"><div><small>INVOICE</small><button class="plt" data-pl="${esc(c.phone)}" aria-expanded="${plOpen === c.phone}" title="Lihat daftar invoice">${(n => `${n ? `<span class="pay lunas">${n} lunas</span> ` : ""}${c.inv.length - n ? `<span class="pay belum">${c.inv.length - n} belum bayar</span>` : ""}`)(c.inv.filter(o => o.paidAt).length)}<i>${plOpen === c.phone ? "▴" : "▾"}</i></button></div><div><small>TOTAL LUNAS</small><b class="${c.spent ? "" : "mut"}">${rpf(c.spent)}</b></div><div><small>TERAKHIR</small><b>${dfmt(c.last)}</b></div></div>${
       plOpen === c.phone ? `<div class="pld"><small>${esc(c.address)}</small>${c.inv.map(o => `<div class="plr"><button class="linkbtn2" data-ia="view" data-oid="${esc(o.id)}">${esc(o.invoice)}</button><span>${dfmt(o.created)} · ${rpf(o.total)}</span><span class="pay ${o.paidAt ? "lunas" : "belum"}">${o.paidAt ? "LUNAS" : "BELUM BAYAR"}</span></div>`).join("")}</div>` : ""}</div>`).join("")
     : `<p style="padding:24px;text-align:center">${all.length ? "Tidak ada pelanggan yang cocok." : "Belum ada pelanggan"}</p>`;
+  $("pl-table").insertAdjacentHTML("beforeend", pagerHtml("cust", cPage, list.length));
 }
-$("pl-q").oninput = renderCustomers;
+$("pl-q").oninput = () => { cPage = 1; renderCustomers(); }; // PAG-3
 $("pl-table").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.dataset.pl) { plOpen = plOpen === b.dataset.pl ? "" : b.dataset.pl; renderCustomers(); }
@@ -916,7 +925,7 @@ $("pl-table").addEventListener("click", e => {
 });
 
 // ---- Pesanan Masuk (PSM-*): dicatat saat pelanggan menekan tombol WhatsApp. "Sudah diinvoice" diturunkan dari invoice (pesananKode), tidak disimpan terpisah.
-let inbox = [], pTab = "new", pFrom = null;
+let inbox = [], pTab = "new", pFrom = null, pPage = 1;
 const invoiceOf = p => orders.find(o => o.pesananKode === p.code);
 const lastOf = phone => phone ? [...orders].filter(o => o.phone === phone).sort((a, b) => b.created.localeCompare(a.created))[0] : undefined; // invoice terakhir nomor HP ini
 const dtime = d => new Date(d).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -940,8 +949,9 @@ function renderInbox() {
   $("ps-tabs").innerHTML = tabs(pTab, [["new", "Baru", by.new.length], ["match", "Sudah Dicocokkan", by.match.length], ["done", "Sudah Diinvoice", by.done.length]], "ptab");
   const q = $("ps-q").value.toLowerCase();
   const list = by[pTab].filter(p => !q || ([p.code, p.name, p.phone, ...itemsOf(p).map(i => i.name)].join(" ")).toLowerCase().includes(q));
+  pPage = clampPage(pPage, list.length);
   $("ps-list").innerHTML = !list.length ? `<p style="padding:24px;text-align:center">${inbox.length ? "Tidak ada pesanan di sini." : "Belum ada pesanan masuk. Pesanan muncul saat pelanggan menekan “Pesan via WhatsApp”."}</p>`
-    : `<div class="ivlist">${list.map(p => { const iv = invoiceOf(p), its = itemsOf(p), bad = iv && compare(its, iv.items).some(r => r.st), c = esc(p.code),
+    : `<div class="ivlist">${list.slice((pPage - 1) * PER, pPage * PER).map(p => { const iv = invoiceOf(p), its = itemsOf(p), bad = iv && compare(its, iv.items).some(r => r.st), c = esc(p.code),
       fixed = p.matched && qtyKey(its) !== qtyKey(p.items);
       return `<div class="ivrow psrow ${stageOf(p) === "new" ? "" : "paid"}">
         <div><b>${c}</b><br><small>${dtime(p.created)}</small></div>
@@ -951,6 +961,7 @@ function renderInbox() {
         <div class="oact">${iv ? `<button class="linkbtn2" data-pa="view" data-code="${c}">${esc(iv.invoice)}</button><span class="pay ${bad ? "belum" : "lunas"}">${bad ? "⚠ SELISIH" : "✓ COCOK"}</span>`
           : p.matched ? `<button class="b dark" data-pa="make" data-code="${c}">Buat Invoice</button><button class="b sm" data-pa="unmatch" data-code="${c}">Batal cocok</button>`
           : `<button class="b dark" data-pa="match" data-code="${c}">Cocokkan</button><button class="b del" data-pa="del" data-code="${c}">Hapus</button>`}</div></div>`; }).join("")}</div>`;
+  $("ps-list").insertAdjacentHTML("beforeend", pagerHtml("inbox", pPage, list.length));
 }
 // ---- jendela Cocokkan (PSM-13, PSM-14): admin menyamakan daftar dengan isi chat WhatsApp
 let mCur = null, mItems = [];
@@ -981,17 +992,17 @@ $("msave").onclick = async () => {
   if (!items.length || items.some(i => !(i.qty >= 1 && i.qty <= 999))) return void ($("merr").textContent = "Minimal satu barang, jumlah 1 sampai 999.");
   try {
     mCur.matched = (await api("POST", `/api/inbox/${mCur.code}/match`, { items })).matched;
-    $("mdlg").close(); pTab = "match"; renderInbox(); say(`✅ ${mCur.code} sudah dicocokkan. Silakan Buat Invoice.`);
+    $("mdlg").close(); pTab = "match"; pPage = 1; renderInbox(); say(`✅ ${mCur.code} sudah dicocokkan. Silakan Buat Invoice.`);
   } catch (err) { $("merr").textContent = err.message; }
 };
-$("ps-q").oninput = renderInbox;
+$("ps-q").oninput = () => { pPage = 1; renderInbox(); }; // PAG-3
 $("v-pesanan").addEventListener("click", async e => {
   const b = e.target.closest("button"); if (!b) return;
-  if (b.dataset.ptab) { pTab = b.dataset.ptab; return renderInbox(); }
+  if (b.dataset.ptab) { pTab = b.dataset.ptab; pPage = 1; return renderInbox(); }
   const p = inbox.find(x => x.code === b.dataset.code); if (!p) return;
   if (b.dataset.pa === "match") openMatch(p);
   if (b.dataset.pa === "unmatch" && confirm(`Batalkan pencocokan ${p.code}? Hasil koreksi dibuang dan pesanan kembali ke Baru.`)) {
-    try { await api("DELETE", `/api/inbox/${p.code}/match`); delete p.matched; pTab = "new"; } catch (err) { say(err.message, true); }
+    try { await api("DELETE", `/api/inbox/${p.code}/match`); delete p.matched; pTab = "new"; pPage = 1; } catch (err) { say(err.message, true); }
     renderInbox();
   }
   if (b.dataset.pa === "make") openInvoice(null, p);
@@ -1143,12 +1154,9 @@ function renderOrders() {
     .filter(o => (!q || [o.customer, o.invoice, o.city, o.resi].join(" ").toLowerCase().includes(q)) && (!m || mon(o) === m) && (!c || o.courier === c))
     .sort((a, b) => oTab === "done" ? b.shipped.localeCompare(a.shipped)
       : statusOf(a).rank - statusOf(b).rank || (a.shipDate || a.paidAt).localeCompare(b.shipDate || b.paidAt));
-  const pages = Math.max(1, Math.ceil(list.length / OPER));
-  oPage = Math.min(oPage, pages);
-  $("opager").hidden = oPage >= pages; $("opager").textContent = "Memuat data lainnya…";
-  requestAnimationFrame(autoMore);
+  oPage = clampPage(oPage, list.length);
   const btn = (a, o, label, cls = "sm") => `<button class="b ${cls}" data-oa="${a}" data-oid="${esc(o.id)}">${label}</button>`;
-  $("otable").innerHTML = list.length ? list.slice(0, oPage * OPER).map(o => { const st = statusOf(o); return `<div class="plc">
+  $("otable").innerHTML = list.length ? list.slice((oPage - 1) * PER, oPage * PER).map(o => { const st = statusOf(o); return `<div class="plc">
       <div class="plh"><span class="av">${esc(ini(o.customer))}</span>
         <div class="plm"><b>${esc(o.customer)}</b><small>${esc(o.invoice)} · ${esc(o.city || "-")}</small></div>
         <span class="ost ${st.k}">${esc(st.t)}</span></div>
@@ -1158,6 +1166,7 @@ function renderOrders() {
         <div><small>DIBAYAR</small><span class="pay lunas">LUNAS</span> <small class="rs">${dfmt(o.paidAt)}</small></div></div>
       <div class="oact plf">${btn("label", o, "Cetak Label")}${o.shipped ? "" : btn("ship", o, "Tandai Sudah Kirim", "dark")}${dots("ship", o)}</div></div>`; }).join("")
     : `<p style="padding:24px;text-align:center">${all.length ? "Tidak ada pesanan yang cocok." : "Belum ada pesanan siap kirim. Pesanan masuk otomatis setelah invoice dibayar."}</p>`;
+  $("otable").insertAdjacentHTML("beforeend", pagerHtml("ship", oPage, list.length));
 }
 
 async function saveOrders() {
