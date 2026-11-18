@@ -139,18 +139,23 @@
   .ivgrid { grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; }
   .ivcard { background:#fff; border-radius:18px; box-shadow:0 4px 14px #0E3B4314; overflow:hidden; display:flex; flex-direction:column; border-top:5px solid var(--pink); }
   .ivcard.paid { border-top-color:#0BBDB6; }
-  .ivhead { padding:12px 16px 8px; display:flex; flex-wrap:wrap; align-items:center; gap:2px 8px; background:#FDEBF3; }
-  .ivhead .pay { margin-left:auto; }
-  .ivwho { padding:10px 16px 0; display:flex; flex-direction:column; }
+  .ivhead { padding:14px 16px 10px; display:grid; grid-template-columns:1fr auto; align-items:center; gap:2px 8px; background:#FDEBF3; }
+  .ivhead small { grid-column:1; color:#5E8388; }
+  .ivhead .pay { grid-column:2; grid-row:1/3; }
+  .ivwho { padding:12px 16px 0; display:flex; flex-direction:column; }
   .ivwho small, .ivit small { color:#5E8388; }
-  .ivitems { list-style:none; margin:8px 16px 12px; padding:0; flex:1; }
-  .ivit { display:grid; grid-template-columns:42px 1fr auto; gap:10px; align-items:center; padding:8px 0; border-top:1px dashed var(--line); }
-  .ivit:first-child { border-top:0; }
-  .ivit img, .ivph { width:42px; height:42px; border-radius:10px; object-fit:cover; }
-  .ivph { display:grid; place-items:center; font-size:1.3rem; background:#FDEBF3; }
-  .ivit > div { min-width:0; display:flex; flex-direction:column; }
+  .ivitems { list-style:none; margin:10px 16px 12px; padding:0; flex:1; background:#FAFDFD; border:1px solid var(--line); border-radius:12px; }
+  .ivitems-h { padding:8px 12px 0; font-size:.72rem; font-weight:700; letter-spacing:.04em; color:#5E8388; }
+  .ivit { display:grid; grid-template-columns:40px 1fr auto; gap:10px; align-items:start; padding:10px 12px; border-top:1px solid var(--line); }
+  .ivit:first-of-type { border-top:0; }
+  .ivit img, .ivph { width:40px; height:40px; border-radius:10px; object-fit:cover; }
+  .ivph { display:grid; place-items:center; font-size:1.2rem; background:#FDEBF3; }
+  .ivit > div { min-width:0; display:flex; flex-direction:column; gap:1px; }
   .ivit > div > b { font-size:.92rem; line-height:1.25; }
-  .ivit > b { font-size:.92rem; white-space:nowrap; }
+  .ivit > b { font-size:.92rem; white-space:nowrap; text-align:right; }
+  .ivq { display:inline-block; background:#E3F6F5; color:#0E3B43; border-radius:6px; padding:0 6px; font-weight:700; margin-right:4px; }
+  .ivd { display:inline-block; background:#FDEBF3; color:#c0307a; border-radius:6px; padding:0 6px; font-weight:700; margin-top:2px; align-self:flex-start; }
+  .ivsum { padding:0 16px 10px; display:flex; justify-content:space-between; font-size:.88rem; color:#5E8388; }
   .ivfoot { padding:10px 16px 14px; border-top:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
   .ivfoot > b { font-size:1.15rem; }
   @media (max-width:800px) {
@@ -959,11 +964,12 @@ function renderInvoices() {
         <div class="ivtot"><b>${rpf(o.total)}</b><br>${status(o)}${o.paidAt ? `<br><small>${kirim(o)}</small>` : ""}</div>
         ${acts(o)}</div>`).join("")}</div>`
     : `<div class="ivgrid">${shown.map(o => `<div class="ivcard ${o.paidAt ? "paid" : ""}">
-        <div class="ivhead">${no(o)} <small>· ${dfmt(o.created)}</small>${status(o)}</div>
+        <div class="ivhead">${no(o)}<small>${dfmt(o.created)}</small>${status(o)}</div>
         <div class="ivwho"><b>${esc(o.customer)}</b><small>${esc(o.city || "-")}${o.paidAt ? " · " + kirim(o) : ""}</small></div>
-        <ul class="ivitems">${o.items.map(i => `<li class="ivit">${picOf(i) ? `<img src="${esc(picOf(i))}" alt="">` : `<div class="ivph">🛍️</div>`}
-          <div><b>${esc(i.name)}</b>${i.note ? `<small>${esc(i.note)}</small>` : ""}<small>${i.qty} × ${rpf(i.price)}${i.discount ? ` − diskon ${rpf(i.discount)}` : ""}</small></div>
+        <ul class="ivitems"><li class="ivitems-h" style="list-style:none">${o.items.length} BARANG</li>${o.items.map(i => `<li class="ivit">${picOf(i) ? `<img src="${esc(picOf(i))}" alt="">` : `<div class="ivph">🛍️</div>`}
+          <div><b>${esc(i.name)}</b>${i.note ? `<small>${esc(i.note)}</small>` : ""}<small><span class="ivq">${i.qty}×</span>${rpf(i.price)}</small>${i.discount ? `<span class="ivd">Diskon −${rpf(i.discount)}</span>` : ""}</div>
           <b>${rpf(i.qty * i.price - (i.discount || 0))}</b></li>`).join("")}</ul>
+        ${o.shipping ? `<div class="ivsum"><span>Ongkir</span><span>${rpf(o.shipping)}</span></div>` : ""}
         <div class="ivfoot"><b>${rpf(o.total)}</b>${acts(o)}</div></div>`).join("")}</div>`;
   $("iv-table").insertAdjacentHTML("beforeend", pagerHtml("inv", iPage, list.length));
 }
