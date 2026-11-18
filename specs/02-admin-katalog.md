@@ -28,3 +28,4 @@ Kategori dan kurir sebagai daftar terkelola (usulan, lihat `keputusan.md`). Bany
 
 **HP**
 - **KAT-11** Di layar ≤800px: sidebar keluar dari kiri lewat ☰ dengan latar gelap; mengetuk latar menutupnya. Dialog muncul dari bawah. — ✅ dicek di 390
+- **KAT-12** Tampilan HP (≤800px) seragam di semua halaman admin: isian berfont 16px dengan batas tipis pink (fokus pink); kartu ringkasan 2 kolom, kartu ganjil terakhir selebar layar; Katalog 2 kolom; kartu Pengiriman menaruh status (Terlambat/Terjadwal) sebagai pil di bawah nama dan tombol aksi satu baris (Cetak Label, Tandai Sudah Kirim, ⋮); tab bisa digeser. Tanpa geser samping di lebar 390. — ✅ dicek di Chrome (CDP, 390, server demo): Pesanan, Katalog, Invoice, Pengiriman, Pelanggan, Pengaturan, menu ☰, dialog Edit Barang, Buat Invoice, Pengiriman; geser samping 0px. Halaman Tambah Produk langkah 2–3, dialog Invoice/Bukti bayar ⬜
