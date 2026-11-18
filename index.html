@@ -194,12 +194,19 @@ const actHtml = p => {
   if (!n) return `<button class="cartbtn" data-buy="${id}" aria-label="Tambah ke keranjang">${CART} Tambah</button>`;
   return `<div class="step"><button data-dec="${id}" aria-label="${n === 1 ? "Hapus dari keranjang" : "Kurangi"}">${n === 1 ? "🗑" : "−"}</button><b>${n}</b><button data-inc="${id}" aria-label="Tambah" ${n >= max(p) ? "disabled" : ""}>+</button></div>`;
 };
+let cols = 2, colsAuto = true; // colsAuto: kolom dipilih otomatis oleh lebar layar, belum oleh pengguna
 const setCols = n => {
+  cols = +n;
   $("grid").style.setProperty("--cols", n);
   document.querySelector(".seg").style.setProperty("--i", n - 1);
   document.querySelectorAll("[data-cols]").forEach(x => x.classList.toggle("on", x.dataset.cols == n));
 };
-if (innerWidth > 900) setCols(3); // layar lebar: 3 kolom supaya kartu tidak raksasa
+// TOK-6: layar lebar (>900) mulai 3 kolom; layar ≤600 maksimal 2 kolom, juga saat jendela diperkecil/diputar setelah dimuat
+const fitCols = () => {
+  if (innerWidth <= 600 && cols === 3) setCols(2);
+  else if (innerWidth > 900 && colsAuto && cols !== 3) setCols(3);
+};
+fitCols(); addEventListener("resize", fitCols);
 let sortBy = "desc"; // "desc" | "asc" (TOK-14): awal = harga tertinggi
 const SORTS = { asc: "Harga terendah", desc: "Harga tertinggi" };
 const cats = () => [...new Set(PRODUCTS.map(p => p.cat).filter(Boolean))];
@@ -304,7 +311,7 @@ document.addEventListener("click", e => {
   if (d.buy) { cart[p.id] = Math.min(max(p), (cart[p.id] || 0) + 1); renderCart(); }
   if (d.inc) { cart[p.id] = Math.min(max(p), cart[p.id] + 1); renderCart(); }
   if (d.dec) { if (--cart[p.id] <= 0) delete cart[p.id]; renderCart(); }
-  if (d.cols) setCols(d.cols);
+  if (d.cols) { colsAuto = false; setCols(d.cols); }
 });
 $("fsortp").onchange = e => { sortBy = e.target.dataset.s; page = 1; sortLabel(); $("fsortd").open = false; renderGrid(); };
 $("fcatp").onchange = e => { const c = e.target.dataset.c; if (!c) return; e.target.checked ? sel.add(c) : sel.delete(c); page = 1; catLabel(); renderGrid(); };
