@@ -33,11 +33,13 @@ if (process.env.DEMO) try {
     "INV-2026100005": ["PSN-M6Y9HB", 3200, [["Flat shoes", 1], ["Kaos kaki", 1]]],                         // selisih: kaos kaki tidak ada di invoice
     "INV-2026100006": ["PSN-L2J5GX", 3300, [["Tote bag kulit", 1]]] };                                     // cocok
   const at = min => new Date(Date.now() - min * 6e4).toISOString();
-  const put = (code, min, who, items) => col("inbox").replaceOne({ _id: code }, { ...who, created: at(min), items: items.map(([name, qty]) => ({ id: pid(name), name, price: price.get(name), qty })) });
+  const mk = items => items.map(([name, qty]) => ({ id: pid(name), name, price: price.get(name), qty }));
+  const put = (code, min, who, items, matched) => col("inbox").replaceOne({ _id: code }, { ...who, created: at(min), items: mk(items), ...(matched && { matched: { at: at(min - 5), items: mk(matched) } }) });
   for (const [inv, [code, min, items]] of Object.entries(PSN)) { const o = orders.find(x => x.invoice === inv); put(code, min, { name: o.customer, phone: o.phone, address: o.address }, items); }
   const sari = orders.find(x => x.customer === "Ibu Sari");
   put("PSN-K7Q2XM", 5, { name: sari.customer, phone: sari.phone, address: sari.address }, [["Tote bag kulit", 1], ["Flat shoes", 2]]); // Baru, pelanggan lama (HP sama dengan Ibu Sari)
-  put("PSN-9HT4BD", 40, { name: "Ibu Wulan", phone: "081298765432", address: "Jl. Anggrek No. 5, Cimahi Tengah, 40525" }, [["Sling bag", 1]]);                     // Baru, pelanggan baru
+  put("PSN-9HT4BD", 40, { name: "Ibu Wulan", phone: "081298765432", address: "Jl. Anggrek No. 5, Cimahi Tengah, 40525" }, [["Sling bag", 1]], [["Sling bag", 2]]); // Sudah dicocokkan dengan koreksi (qty 1 -> 2, sesuai chat), belum diinvoice
+  put("PSN-W4D7QP", 20, { name: "Ibu Citra", phone: "081355556666", address: "Jl. Kenanga No. 3, Bandung" }, [["Flat shoes", 1]]); // Baru, pelanggan baru
   col("kv").replaceOne({ _id: "orders" }, { v: orders.map(o => ({ ...o, pesananKode: PSN[o.invoice]?.[0] || "", items: o.items.map(i => ({ note: "", discount: 0, ...i })) })) });
 } catch (e) { console.error("DEMO: orders.json tidak terbaca:", e.message); }
 const mock = { MongoClient: class { connect() { return Promise.resolve({ db: () => ({ collection: col }) }); } } };

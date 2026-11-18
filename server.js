@@ -36,6 +36,11 @@ function body(req, max = 3e6) {
 }
 // INV-5: +62…, 62…, 8… -> 08…; dipakai invoice dan pesanan masuk
 const normPhone = v => { let d = String(v ?? "").replace(/\D/g, ""); if (d.startsWith("62")) d = "0" + d.slice(2); else if (d.startsWith("8")) d = "0" + d; return d.slice(0, 15); };
+// PSM-2/PSM-16: barang pesanan selalu dari katalog (nama dan harga dari katalog, bukan dari klien), qty 1-999
+const pickItems = (list, cat) => (Array.isArray(list) ? list : []).slice(0, 50).map(i => {
+  const p = cat.find(p => p.id === String(i.id));
+  return p && { id: p.id, name: p.name, price: p.price, qty: Math.min(999, Math.floor(Number(i.qty)) || 0) };
+}).filter(i => i && i.qty >= 1);
 const send = (res, code, obj) => { res.writeHead(code, { "content-type": "application/json" }); res.end(JSON.stringify(obj)); };
 const file = (res, p) => fs.readFile(p, (e, d) => {
   if (e) { res.writeHead(404); return res.end("Tidak ditemukan"); }
@@ -59,13 +64,10 @@ const handler = async (req, res) => {
       const name = String(d.name ?? "").trim().slice(0, 100), phone = normPhone(d.phone);
       if (!name) return send(res, 400, { error: "Nama wajib diisi" });
       if (!/^08\d{8,12}$/.test(phone)) return send(res, 400, { error: "Nomor HP harus nomor HP Indonesia (diawali 08)" });
-      const cat = (await kv("data")).products;
-      const items = (Array.isArray(d.items) ? d.items : []).slice(0, 50).map(i => {
-        const p = cat.find(p => p.id === String(i.id));
-        return p && { id: p.id, name: p.name, price: p.price, qty: Math.min(999, Math.floor(Number(i.qty)) || 0) };
-      }).filter(i => i && i.qty >= 1);
+      const items = pickItems(d.items, (await kv("data")).products);
       if (!items.length) return send(res, 400, { error: "Tidak ada barang yang valid" });
       const col = (await db()).collection("inbox");
+      if ((await col.findOne({ _id: d.code }))?.matched) return send(res, 200, { ok: true }); // PSM-16: kirim ulang tidak menimpa pencocokan admin
       await col.replaceOne({ _id: d.code }, { name, phone, address: String(d.address ?? "").trim().slice(0, 300), items, created: new Date().toISOString() }, { upsert: true }); // kode sama = timpa, bukan ganda
       const old = await col.find().sort({ created: -1 }).skip(500).toArray();
       if (old.length) await col.deleteMany({ _id: { $in: old.map(x => x._id) } });
@@ -85,6 +87,19 @@ const handler = async (req, res) => {
       const name = `${crypto.randomUUID()}.${m[1] === "application/pdf" ? "pdf" : m[1].slice(6).replace("jpeg", "jpg")}`;
       await putFile("docs", name, buf);
       return send(res, 200, { file: name });
+    }
+    const mm = /^\/api\/inbox\/(PSN-[A-Z0-9]{6})\/match$/.exec(url);
+    if (mm && (req.method === "POST" || req.method === "DELETE")) { // PSM-16: admin mencocokkan pesanan website dengan chat WhatsApp
+      const col = (await db()).collection("inbox"), doc = await col.findOne({ _id: mm[1] });
+      if (!doc) return send(res, 404, { error: "Pesanan tidak ditemukan" });
+      if ((await kv("orders")).some(o => o.pesananKode === mm[1])) return send(res, 400, { error: "Pesanan ini sudah punya invoice" });
+      const { _id, matched, ...rest } = doc;
+      if (req.method === "DELETE") { await col.replaceOne({ _id }, rest); return send(res, 200, { ok: true }); }
+      const items = pickItems((await body(req, 2e4)).items, (await kv("data")).products);
+      if (!items.length) return send(res, 400, { error: "Tidak ada barang yang valid" });
+      const m = { at: new Date().toISOString(), items };
+      await col.replaceOne({ _id }, { ...rest, matched: m });
+      return send(res, 200, { ok: true, matched: m });
     }
     if (req.method === "GET" && url === "/api/inbox") return send(res, 200, (await (await db()).collection("inbox").find().sort({ created: -1 }).limit(500).toArray()).map(({ _id, ...r }) => ({ code: _id, ...r })));
     if (req.method === "DELETE" && url.startsWith("/api/inbox/")) { // PSM-5: hanya pesanan yang belum punya invoice
@@ -120,6 +135,9 @@ const handler = async (req, res) => {
       });
       const kodes = out.map(o => o.pesananKode).filter(Boolean); // PSM-6: satu pesanan, satu invoice
       if (new Set(kodes).size !== kodes.length) return send(res, 400, { error: "Satu pesanan hanya boleh punya satu invoice" });
+      // PSM-17: invoice BARU dari pesanan hanya bila sudah dicocokkan (invoice lama tidak dicek ulang saat daftar disimpan)
+      const had = new Set((await kv("orders")).map(o => o.pesananKode).filter(Boolean));
+      for (const k of kodes.filter(k => !had.has(k))) if (!(await (await db()).collection("inbox").findOne({ _id: k }))?.matched) return send(res, 400, { error: "Pesanan " + k + " belum dicocokkan" });
       if (out.some(o => !o.items.length)) return send(res, 400, { error: "Isi barang pada invoice wajib diisi" });
       if (out.some(o => o.items.some(i => !i.name || i.qty < 1 || i.price < 1 || i.discount > i.qty * i.price))) return send(res, 400, { error: "Setiap barang harus punya nama, jumlah, dan harga; diskon tidak boleh melebihi harga" });
       if (out.some(o => !/^08\d{8,12}$/.test(o.phone))) return send(res, 400, { error: "Nomor HP penerima harus nomor HP Indonesia (diawali 08)" });

@@ -169,9 +169,29 @@ const rejected = async (fn) => { const r = await fn(); assert.strictEqual(r.stat
       // PSM-4: baca dan hapus butuh login
       assert.strictEqual((await call("GET", "/api/inbox", undefined, null)).status, 401);
       assert.strictEqual((await call("DELETE", "/api/inbox/" + codes[0], undefined, null)).status, 401);
-      // PSM-6: invoice menyimpan kode; pesanan berinvoice tak bisa dihapus; satu pesanan satu invoice
+      // PSM-16/17: pencocokan. Invoice baru dari pesanan ditolak sebelum dicocokkan; koreksi admin disimpan terpisah dari pesanan asli
       const inv = (id) => { const o = valid(); o.id = id; o.invoice = id; o.pesananKode = codes[0]; return o; };
+      const match = (code, b, pass) => call("POST", "/api/inbox/" + code + "/match", b, pass);
+      const mine = async () => (await list()).find(x => x.code === codes[0]);
+      await rejected(() => call("PUT", "/api/orders", [inv("uji-a")]));                         // belum dicocokkan
+      assert.strictEqual((await match(codes[0], { items: body.items }, null)).status, 401);     // butuh login admin
+      assert.strictEqual((await match("PSN-TIDAK1", { items: body.items })).status, 404);       // kode tak dikenal
+      assert.strictEqual((await match(codes[0], { items: [{ id: "tidak-ada", qty: 1 }] })).status, 400); // tanpa barang valid
+      assert.strictEqual((await match(codes[0], { items: [{ id: "uji-p", qty: 5, name: "Palsu", price: 1 }] })).status, 200);
+      const m1 = await mine();
+      assert.deepStrictEqual(m1.matched.items, [{ id: "uji-p", name: "Barang Uji", price: 5000, qty: 5 }]); // nama/harga dari katalog
+      assert.strictEqual(m1.items[0].qty, 2);                                                   // pesanan asli tetap
+      assert.strictEqual((await pub(body)).status, 200);                                        // kirim ulang publik tidak menimpa
+      assert.ok((await mine()).matched, "pencocokan hilang setelah kirim ulang");
+      assert.strictEqual((await call("DELETE", "/api/inbox/" + codes[0] + "/match")).status, 200); // Batal cocok
+      assert.strictEqual((await mine()).matched, undefined);
+      await rejected(() => call("PUT", "/api/orders", [inv("uji-a")]));                         // kembali belum dicocokkan
+      assert.strictEqual((await match(codes[0], { items: body.items })).status, 200);
+      // PSM-6: invoice menyimpan kode; pesanan berinvoice tak bisa dihapus/dicocokkan ulang; satu pesanan satu invoice
       assert.strictEqual((await call("PUT", "/api/orders", [inv("uji-a")])).status, 200);
+      assert.strictEqual((await call("PUT", "/api/orders", [inv("uji-a")])).status, 200);        // simpan ulang daftar yang sama tetap diterima
+      assert.strictEqual((await match(codes[0], { items: body.items })).status, 400);
+      assert.strictEqual((await call("DELETE", "/api/inbox/" + codes[0] + "/match")).status, 400);
       assert.strictEqual((await call("GET", "/api/orders")).body[0].pesananKode, codes[0]);
       assert.strictEqual((await call("DELETE", "/api/inbox/" + codes[0])).status, 400);
       await rejected(() => call("PUT", "/api/orders", [inv("uji-a"), inv("uji-b")]));

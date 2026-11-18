@@ -157,6 +157,14 @@
   }
   /* Pesanan Masuk (PSM-*) dan perbandingan dengan invoice */
   #v-pesanan .ofil { grid-template-columns:1fr; }
+  /* jendela Cocokkan (PSM-13) */
+  #mdlg { width:min(560px,96vw); }
+  .mrow { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--line); }
+  .mrow > div { flex:1; min-width:0; }
+  .mrow small { display:block; opacity:.8; }
+  .mrow input { width:76px; margin:0; text-align:center; }
+  .mtag { color:#8a5a00; font-weight:700; }
+  #mgone { margin:8px 0; font-size:.85rem; color:#c00; }
   .psrow { grid-template-columns:170px 1fr 150px auto; }
   @media (max-width:800px) { .psrow { grid-template-columns:1fr auto; } .psrow > :nth-child(2) { grid-column:1/-1; order:3; } .psrow > .oact { grid-column:1/-1; order:4; } .psrow > .oact .b { flex:1; } }
   #pl-table table { min-width:0; }
@@ -393,7 +401,7 @@
     </section>
     <section id="v-pesanan" hidden>
       <div class="pagehead"><h2>Pesanan Masuk</h2></div>
-      <div class="warn">Pesanan tercatat saat pelanggan menekan <b>Pesan via WhatsApp</b>. Cocokkan <b>kode pesanan</b> di chat dengan daftar ini, lalu <b>Buat Invoice</b>. Pesanan yang tidak dibalas pelanggan tetap Baru sampai Anda hapus.</div>
+      <div class="warn">Pesanan tercatat saat pelanggan menekan <b>Pesan via WhatsApp</b>. Langkahnya: <b>Cocokkan</b> kode pesanan dengan chat WhatsApp (koreksi bila berbeda), lalu <b>Buat Invoice</b>. Pesanan yang tidak dibalas pelanggan tetap Baru sampai Anda hapus.</div>
       <div class="stats" id="ps-stats"></div>
       <div class="otabs" id="ps-tabs"></div>
       <div class="ofil"><input id="ps-q" placeholder="Cari kode, nama, HP, atau barang"></div>
@@ -456,6 +464,16 @@
   <div class="wact noprint" style="margin-top:12px"><button class="b dark" id="lprint">🖨️ Cetak Label</button><button class="b" id="lclose">Tutup</button></div>
 </dialog>
 <datalist id="couriers"><option value="Kurir Internal"><option value="Diambil Sendiri oleh Pelanggan"><option value="JNE"><option value="J&amp;T"><option value="SiCepat"><option value="GoSend"><option value="Grab Express"></datalist>
+<dialog id="mdlg">
+  <h2 id="mtitle">Cocokkan pesanan</h2>
+  <p id="minfo" style="margin-top:0"></p>
+  <div class="warn" id="mhint"></div>
+  <div id="mlines"></div>
+  <div id="mgone"></div>
+  <select id="madd" aria-label="Tambah barang dari katalog"></select>
+  <div id="merr" style="color:#c00;margin:8px 0"></div>
+  <div class="wact"><button class="b dark" id="msave">Sudah Cocok</button><button class="b" id="mcancel">Batal</button></div>
+</dialog>
 <dialog id="idlg">
   <h2 id="ititle">Buat Invoice</h2>
   <label>Pelanggan (nama penerima)</label><input id="i-customer">
@@ -895,28 +913,72 @@ function compare(pItems, iItems) {
   return [...new Set([...P.keys(), ...I.keys()])].map(x => { const p = P.get(x), i = I.get(x);
     return { name: (p || i).name, p: p?.qty || 0, i: i?.qty || 0, st: !i ? "Tidak ada di invoice" : !p ? "Tambahan, tidak ada di pesanan" : p.qty !== i.qty ? "Jumlah beda" : "" }; });
 }
+// PSM-12: tiga tahap. Sudah dicocokkan = admin sudah membandingkan dengan chat WhatsApp (boleh dikoreksi); sudah diinvoice diturunkan dari invoice
+const itemsOf = p => p.matched?.items || p.items; // hasil pencocokan bila ada, kalau tidak pesanan website
+const stageOf = p => invoiceOf(p) ? "done" : p.matched ? "match" : "new";
+const qtyKey = a => JSON.stringify(a.map(i => [i.id, i.qty]).sort());
 function renderInbox() {
-  const nw = inbox.filter(p => !invoiceOf(p)), done = inbox.filter(p => invoiceOf(p));
-  $("pcount").textContent = nw.length;
-  $("ps-stats").innerHTML = stat("BARU (BELUM DIINVOICE)", nw.length, "#c00") + stat("SUDAH DIINVOICE", done.length, "#1c6b32");
-  $("ps-tabs").innerHTML = tabs(pTab, [["new", "Baru", nw.length], ["done", "Sudah Diinvoice", done.length]], "ptab");
+  const by = { new: [], match: [], done: [] };
+  inbox.forEach(p => by[stageOf(p)].push(p));
+  $("pcount").textContent = by.new.length;
+  $("ps-stats").innerHTML = stat("BARU (PERLU DICOCOKKAN)", by.new.length, "#c00") + stat("SUDAH DICOCOKKAN", by.match.length) + stat("SUDAH DIINVOICE", by.done.length, "#1c6b32");
+  $("ps-tabs").innerHTML = tabs(pTab, [["new", "Baru", by.new.length], ["match", "Sudah Dicocokkan", by.match.length], ["done", "Sudah Diinvoice", by.done.length]], "ptab");
   const q = $("ps-q").value.toLowerCase();
-  const list = (pTab === "new" ? nw : done).filter(p => !q || ([p.code, p.name, p.phone, ...p.items.map(i => i.name)].join(" ")).toLowerCase().includes(q));
-  $("ps-list").innerHTML = !list.length ? `<p style="padding:24px;text-align:center">${inbox.length ? "Tidak ada pesanan yang cocok." : "Belum ada pesanan masuk. Pesanan muncul saat pelanggan menekan “Pesan via WhatsApp”."}</p>`
-    : `<div class="ivlist">${list.map(p => { const iv = invoiceOf(p), bad = iv && compare(p.items, iv.items).some(r => r.st), c = esc(p.code);
-      return `<div class="ivrow psrow ${iv ? "paid" : ""}">
+  const list = by[pTab].filter(p => !q || ([p.code, p.name, p.phone, ...itemsOf(p).map(i => i.name)].join(" ")).toLowerCase().includes(q));
+  $("ps-list").innerHTML = !list.length ? `<p style="padding:24px;text-align:center">${inbox.length ? "Tidak ada pesanan di sini." : "Belum ada pesanan masuk. Pesanan muncul saat pelanggan menekan “Pesan via WhatsApp”."}</p>`
+    : `<div class="ivlist">${list.map(p => { const iv = invoiceOf(p), its = itemsOf(p), bad = iv && compare(its, iv.items).some(r => r.st), c = esc(p.code),
+      fixed = p.matched && qtyKey(its) !== qtyKey(p.items);
+      return `<div class="ivrow psrow ${stageOf(p) === "new" ? "" : "paid"}">
         <div><b>${c}</b><br><small>${dtime(p.created)}</small></div>
-        <div>${p.name ? `<b>${esc(p.name)}</b> <small>· ${esc(p.phone)}</small>${lastOf(p.phone) ? ` <span class="pay lunas">PELANGGAN LAMA · ${orders.filter(o => o.phone === p.phone).length} invoice</span>` : ""}` : ""}
-          <div class="ivtx">${esc(p.items.map(i => `${i.name} ×${i.qty}`).join(", "))}</div></div>
-        <div class="ivtot"><b>${rpf(p.items.reduce((s, i) => s + i.qty * i.price, 0))}</b><br><small>${p.items.reduce((s, i) => s + i.qty, 0)} pcs</small></div>
+        <div>${p.name ? `<b>${esc(p.name)}</b> <small>· ${esc(p.phone)}</small>${lastOf(p.phone) ? ` <span class="pay lunas">PELANGGAN LAMA · ${orders.filter(o => o.phone === p.phone).length} invoice</span>` : ""}` : ""}${fixed ? ` <span class="pay dp">DIKOREKSI</span>` : ""}
+          <div class="ivtx">${esc(its.map(i => `${i.name} ×${i.qty}`).join(", "))}</div></div>
+        <div class="ivtot"><b>${rpf(its.reduce((s, i) => s + i.qty * i.price, 0))}</b><br><small>${its.reduce((s, i) => s + i.qty, 0)} pcs</small></div>
         <div class="oact">${iv ? `<button class="linkbtn2" data-pa="view" data-code="${c}">${esc(iv.invoice)}</button><span class="pay ${bad ? "belum" : "lunas"}">${bad ? "⚠ SELISIH" : "✓ COCOK"}</span>`
-          : `<button class="b dark" data-pa="make" data-code="${c}">Buat Invoice</button><button class="b del" data-pa="del" data-code="${c}">Hapus</button>`}</div></div>`; }).join("")}</div>`;
+          : p.matched ? `<button class="b dark" data-pa="make" data-code="${c}">Buat Invoice</button><button class="b sm" data-pa="unmatch" data-code="${c}">Batal cocok</button>`
+          : `<button class="b dark" data-pa="match" data-code="${c}">Cocokkan</button><button class="b del" data-pa="del" data-code="${c}">Hapus</button>`}</div></div>`; }).join("")}</div>`;
 }
+// ---- jendela Cocokkan (PSM-13, PSM-14): admin menyamakan daftar dengan isi chat WhatsApp
+let mCur = null, mItems = [];
+function openMatch(p) {
+  mCur = p; mItems = itemsOf(p).map(i => ({ ...i }));
+  $("mtitle").textContent = "Cocokkan " + p.code;
+  $("minfo").innerHTML = `<b>${esc(p.name)}</b> · ${esc(p.phone)}<br><small>${esc(p.address || "(alamat tidak diisi)")}</small>`;
+  $("mhint").innerHTML = `Buka chat WhatsApp berkode <b>${esc(p.code)}</b>, lalu ubah daftar di bawah agar <b>sama dengan isi chat</b>.`;
+  $("merr").textContent = ""; renderMatch(); $("mdlg").showModal();
+}
+function renderMatch() {
+  const orig = new Map(mCur.items.map(i => [i.id, i.qty]));
+  $("mlines").innerHTML = mItems.map((i, n) => `<div class="mrow"><div><b>${esc(i.name)}</b><small>${rpf(i.price)}${!orig.has(i.id) ? ` · <span class="mtag">Tambahan</span>` : orig.get(i.id) !== i.qty ? ` · <span class="mtag">Diubah (di website ${orig.get(i.id)})</span>` : ""}</small></div>
+    <input type="number" min="1" max="999" inputmode="numeric" value="${i.qty}" data-mq="${n}" aria-label="Jumlah ${esc(i.name)}"><button type="button" class="dots" data-mrm="${n}" aria-label="Hapus ${esc(i.name)}">✕</button></div>`).join("") || "<p>Belum ada barang.</p>";
+  const gone = mCur.items.filter(o => !mItems.some(i => i.id === o.id));
+  $("mgone").textContent = gone.length ? "Dihapus dari pesanan website: " + gone.map(g => g.name).join(", ") : "";
+  $("madd").innerHTML = `<option value="">+ Tambah barang dari katalog…</option>` + data.products.filter(p => !mItems.some(i => i.id === p.id)).map(p => `<option value="${esc(p.id)}">${esc(p.name)} (${rpf(p.price)})</option>`).join("");
+}
+$("mdlg").addEventListener("input", e => { if (e.target.dataset.mq !== undefined) mItems[+e.target.dataset.mq].qty = Math.floor(+e.target.value) || 0; });
+$("mdlg").addEventListener("change", e => { // render ulang setelah selesai mengetik, supaya kolom tidak kehilangan fokus
+  if (e.target.dataset.mq !== undefined) renderMatch();
+  if (e.target.id === "madd" && e.target.value) { const p = data.products.find(x => x.id === e.target.value); if (p) mItems.push({ id: p.id, name: p.name, price: p.price, qty: 1 }); renderMatch(); }
+});
+$("mdlg").addEventListener("click", e => { const b = e.target.closest("[data-mrm]"); if (b) { mItems.splice(+b.dataset.mrm, 1); renderMatch(); } });
+$("mcancel").onclick = () => $("mdlg").close();
+$("msave").onclick = async () => {
+  const items = mItems.map(i => ({ id: i.id, qty: i.qty }));
+  if (!items.length || items.some(i => !(i.qty >= 1 && i.qty <= 999))) return void ($("merr").textContent = "Minimal satu barang, jumlah 1 sampai 999.");
+  try {
+    mCur.matched = (await api("POST", `/api/inbox/${mCur.code}/match`, { items })).matched;
+    $("mdlg").close(); pTab = "match"; renderInbox(); say(`✅ ${mCur.code} sudah dicocokkan. Silakan Buat Invoice.`);
+  } catch (err) { $("merr").textContent = err.message; }
+};
 $("ps-q").oninput = renderInbox;
 $("v-pesanan").addEventListener("click", async e => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.dataset.ptab) { pTab = b.dataset.ptab; return renderInbox(); }
   const p = inbox.find(x => x.code === b.dataset.code); if (!p) return;
+  if (b.dataset.pa === "match") openMatch(p);
+  if (b.dataset.pa === "unmatch" && confirm(`Batalkan pencocokan ${p.code}? Hasil koreksi dibuang dan pesanan kembali ke Baru.`)) {
+    try { await api("DELETE", `/api/inbox/${p.code}/match`); delete p.matched; pTab = "new"; } catch (err) { say(err.message, true); }
+    renderInbox();
+  }
   if (b.dataset.pa === "make") openInvoice(null, p);
   if (b.dataset.pa === "view") openInvoiceView(invoiceOf(p));
   if (b.dataset.pa === "del" && confirm(`Hapus pesanan ${p.code}?`)) {
@@ -978,7 +1040,7 @@ function openInvoice(o, from = null) { // from = pesanan masuk yang dijadikan in
   const v = o || { invoice: nextInvoice(), ...(from && { customer: from.name, phone: from.phone, address: from.address || prev?.address, city: prev && (!from.address || from.address === prev.address) ? prev.city : "" }) };
   $("ititle").textContent = o ? "Edit Invoice" : "Buat Invoice";
   IF.forEach(f => { $("i-" + f).value = v[f] || ""; });
-  lines = o ? o.items.map(i => ({ ...i, discount: i.discount || "" })) : from ? from.items.map(i => ({ name: i.name, note: "", qty: i.qty, price: i.price || "", discount: "" })) : [blankLine()];
+  lines = o ? o.items.map(i => ({ ...i, discount: i.discount || "" })) : from ? (from.matched?.items || from.items).map(i => ({ name: i.name, note: "", qty: i.qty, price: i.price || "", discount: "" })) : [blankLine()];
   renderLines();
   $("ierr").textContent = ""; $("idlg").showModal(); $("i-customer").focus();
 }
