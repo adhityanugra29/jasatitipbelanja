@@ -1140,6 +1140,8 @@ function statusOf(o) {
   return d === 0 ? { k: "today", t: "Hari ini", rank: 1 } : { k: "sched", t: "Terjadwal " + dfmt(o.shipDate), rank: 2 };
 }
 
+// KIR-4: Cetak Label baru tampil setelah kurir + jadwal diisi (pesanan yang sudah dikirim cukup kurirnya)
+const labelReady = o => !!o.courier && !!(o.shipDate || o.shipped);
 function renderOrders() {
   const all = orders.filter(o => o.paidAt), todo = all.filter(o => !o.shipped), done = all.filter(o => o.shipped);
   $("ocount").textContent = todo.length;
@@ -1164,7 +1166,7 @@ function renderOrders() {
         <div><small>KURIR</small><b>${o.courier ? esc(o.courier) : `<span class="mut">Belum dipilih</span>`}</b>${o.resi ? `<br><small class="rs">Resi ${esc(o.resi)}</small>` : ""}</div>
         <div><small>JADWAL KIRIM</small><b>${dfmt(o.shipDate)}</b></div>
         <div><small>DIBAYAR</small><span class="pay lunas">LUNAS</span> <small class="rs">${dfmt(o.paidAt)}</small></div></div>
-      <div class="oact plf">${btn("label", o, "Cetak Label")}${o.shipped ? "" : btn("ship", o, "Tandai Sudah Kirim", "dark")}${dots("ship", o)}</div></div>`; }).join("")
+      <div class="oact plf">${labelReady(o) ? btn("label", o, "Cetak Label") : ""}${o.shipped ? "" : btn("set", o, "Atur kurir &amp; jadwal", "dark")}${dots("ship", o)}</div></div>`; }).join("")
     : `<p style="padding:24px;text-align:center">${all.length ? "Tidak ada pesanan yang cocok." : "Belum ada pesanan siap kirim. Pesanan masuk otomatis setelah invoice dibayar."}</p>`;
   $("otable").insertAdjacentHTML("beforeend", pagerHtml("ship", oPage, list.length));
 }
@@ -1245,7 +1247,7 @@ let popFor = null;
 function popItems(ctx, o) {
   const act = ctx === "inv"
     ? (o.paidAt ? (o.shipped ? "" : `<button data-ia="unpay">Batal bayar</button>`) : `<button data-ia="edit">Edit invoice</button>`)
-    : (o.shipped ? `<button data-oa="unship">Batal kirim</button>` : `<button data-oa="set">Atur kurir &amp; jadwal</button>`);
+    : (o.shipped ? `<button data-oa="unship">Batal kirim</button>` : ""); // Atur kurir & jadwal = tombol utama kartu (KIR-4), bukan di menu
   const docs = `<button data-${ctx === "inv" ? "ia" : "oa"}="view">Lihat / cetak invoice</button>` + (o.proof ? `<button data-doc="${esc(o.proof)}">Lihat bukti bayar</button>` : "");
   const del = ctx === "inv" && !o.paidAt ? `<button class="danger" data-ia="del">Hapus invoice</button>` : "";
   return act + docs + del || `<button disabled>Tidak ada aksi</button>`;
