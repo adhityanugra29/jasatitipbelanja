@@ -172,7 +172,7 @@
   /* pelanggan: kartu */
   #pl-q { background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:12px 14px; margin:0; }
   #v-pelanggan .ofil { grid-template-columns:1fr; }
-  .plgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(310px,1fr)); gap:14px; align-items:start; }
+  .plgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(310px,100%),1fr)); gap:14px; align-items:start; }
   .plc { background:#fff; border:1.5px solid var(--line); border-radius:16px; padding:14px; box-shadow:0 4px 14px #0E3B4314; }
   .plc.open { border-color:var(--pink); }
   .plh { display:flex; align-items:center; gap:12px; }
@@ -341,9 +341,13 @@
     #otable .plh .ost.today { background:#FFF1B8; }
     #otable .plh .ost.done { background:#d6f0dc; }
     #otable .plm small { word-break:break-word; }
-    #otable .oact { gap:8px; }
-    #otable .oact .b { flex:1; padding:11px 6px; font-size:.9rem; }
-    #otable .oact .b:not(.dark) { flex:0 0 auto; padding-inline:16px; }
+    #otable .plc, #otable .plm { min-width:0; }
+    #otable .pls.shp { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+    #otable .shi { overflow-wrap:anywhere; }
+    /* aksi utama selebar kartu di baris pertama; Cetak Label dan ⋮ di bawahnya, muat di lebar berapa pun */
+    #otable .oact { flex-wrap:wrap; gap:8px; }
+    #otable .oact .b { flex:1; min-width:0; padding:11px 8px; font-size:.9rem; }
+    #otable .oact .b.dark { order:-1; flex:1 1 100%; }
     .dots { width:44px; height:44px; }
   }
 </style>
