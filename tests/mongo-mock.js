@@ -33,10 +33,10 @@ if (process.env.DEMO) try {
     "INV-2026100006": ["PSN-L2J5GX", 3300, [["Tote bag kulit", 1]]] };                                     // cocok
   const at = min => new Date(Date.now() - min * 6e4).toISOString();
   const put = (code, min, who, items) => col("inbox").replaceOne({ _id: code }, { ...who, created: at(min), items: items.map(([name, qty]) => ({ id: pid(name), name, price: price.get(name), qty })) });
-  for (const [inv, [code, min, items]] of Object.entries(PSN)) { const o = orders.find(x => x.invoice === inv); put(code, min, { name: o.customer, phone: o.phone }, items); }
+  for (const [inv, [code, min, items]] of Object.entries(PSN)) { const o = orders.find(x => x.invoice === inv); put(code, min, { name: o.customer, phone: o.phone, address: o.address }, items); }
   const sari = orders.find(x => x.customer === "Ibu Sari");
-  put("PSN-K7Q2XM", 5, { name: sari.customer, phone: sari.phone }, [["Tote bag kulit", 1], ["Flat shoes", 2]]); // Baru, pelanggan lama (HP sama dengan Ibu Sari)
-  put("PSN-9HT4BD", 40, { name: "Ibu Wulan", phone: "081298765432" }, [["Sling bag", 1]]);                     // Baru, pelanggan baru
+  put("PSN-K7Q2XM", 5, { name: sari.customer, phone: sari.phone, address: sari.address }, [["Tote bag kulit", 1], ["Flat shoes", 2]]); // Baru, pelanggan lama (HP sama dengan Ibu Sari)
+  put("PSN-9HT4BD", 40, { name: "Ibu Wulan", phone: "081298765432", address: "Jl. Anggrek No. 5, Cimahi Tengah, 40525" }, [["Sling bag", 1]]);                     // Baru, pelanggan baru
   col("kv").replaceOne({ _id: "orders" }, { v: orders.map(o => ({ ...o, pesananKode: PSN[o.invoice]?.[0] || "", items: o.items.map(i => ({ note: "", discount: 0, ...i })) })) });
 } catch (e) { console.error("DEMO: orders.json tidak terbaca:", e.message); }
 const mock = { MongoClient: class { connect() { return Promise.resolve({ db: () => ({ collection: col }) }); } } };

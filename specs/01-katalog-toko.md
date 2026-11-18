@@ -17,7 +17,7 @@ Payment gateway. Akun pelanggan. Pelanggan memilih kurir (kurir ditentukan admin
 - **TOK-4** Semua teks dari data di-escape (tidak ada HTML yang lolos). — ⬜
 
 **Cari, filter, daftar**
-- **TOK-5** Pencarian memeriksa nama dan keterangan. Filter kategori boleh lebih dari satu, dengan badge jumlah filter aktif. Tombol filter membuka/menutup deretan chip kategori tepat di bawah baris pencarian (bukan pop-up); chip langsung menyaring daftar, ketuk lagi untuk melepas. — ⬜ dirombak, belum dicek di browser
+- **TOK-5** Pencarian memeriksa nama dan keterangan. Di bawah kolom pencarian ada dua dropdown yang selalu terlihat (tanpa tombol filter): **Urutan** (paling kiri) dan **Kategori** ("Semua kategori" + satu kategori). Memilih langsung menyaring daftar. — ⬜ dirombak, belum dicek di browser
 - **TOK-6** Pilihan tampilan 1/2/3 kolom, satu baris dengan pencarian dan filter. Bawaan 2 kolom; di layar >900px bawaan 3 kolom. Di layar ≤600px pilihan 3 kolom disembunyikan. — ⬜ dirombak, belum dicek ulang di browser
 - **TOK-7** Daftar bertambah sendiri ke bawah saat digulir: 12 barang per muat, tanpa tombol halaman. Mencari atau mengubah filter mengembalikan ke awal. — ⬜
 
@@ -33,7 +33,7 @@ Payment gateway. Akun pelanggan. Pelanggan memilih kurir (kurir ditentukan admin
 - **TOK-13** Kepala ringkas (logo kecil di samping tagline "We make shopping easy"; tanpa judul "Open Order"). Lebar isi maks 1040px. Tombol keranjang berupa pil di tengah (bukan bilah selebar layar), putih saat kosong, pink saat berisi. Tombol "Tambah" bergaris tepi pink. — ⬜ belum dicek di browser (390 dan desktop)
 
 **Urutan**
-- **TOK-14** Pilihan urutan di - **TOK-14** Pilihan urutan berupa dua chip di deretan chip filter (dibuka tombol filter), setelah chip kategori: "Harga terendah" (rendah → tinggi) dan "Harga tertinggi" (tinggi → rendah). Hanya satu aktif; ketuk lagi untuk kembali ke urutan bawaan (sesuai data). Berlaku bersama pencarian dan filter, dan memuat ulang daftar dari awal (TOK-7). Barang stok habis tetap ikut diurutkan menurut harga. Tidak disimpan antar kunjungan. — ⬜ belum diuji geser samping di lebar 390. Pencarian menempel di atas saat menggulir. Keranjang muncul dari bawah; filter kategori tampil sebagai chip di bawah pencarian (TOK-5). Tombol keranjang memperhitungkan safe-area iPhone. — ✅ dicek di 390 (safe-area ⬜)
+- **TOK-14** Dropdown **Urutan** di paling kiri: "Urutan bawaan" (sesuai data), "Harga terendah" (rendah → tinggi), "Harga tertinggi" (tinggi → rendah). Berlaku bersama pencarian dan kategori, dan memuat ulang daftar dari awal (TOK-7). Barang stok habis tetap ikut diurutkan menurut harga. Tidak disimpan antar kunjungan. — ⬜ belum diuji
 
 **Halaman Keranjang** (menggantikan jendela keranjang TOK-10)
 - **TOK-15** Keranjang adalah **halaman sendiri** di `/#keranjang` (tetap satu berkas `index.html`, tanpa langkah build). Tombol 🛒 membukanya; tombol Kembali di browser/HP kembali ke katalog. Jendela keranjang lama dihapus. — ✅ diuji di Chrome (CDP) lebar 390 dan 1280 dengan server demo; tombol Kembali bawaan browser ⬜

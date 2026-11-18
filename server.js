@@ -66,7 +66,7 @@ const handler = async (req, res) => {
       }).filter(i => i && i.qty >= 1);
       if (!items.length) return send(res, 400, { error: "Tidak ada barang yang valid" });
       const col = (await db()).collection("inbox");
-      await col.replaceOne({ _id: d.code }, { name, phone, items, created: new Date().toISOString() }, { upsert: true }); // kode sama = timpa, bukan ganda
+      await col.replaceOne({ _id: d.code }, { name, phone, address: String(d.address ?? "").trim().slice(0, 300), items, created: new Date().toISOString() }, { upsert: true }); // kode sama = timpa, bukan ganda
       const old = await col.find().sort({ created: -1 }).skip(500).toArray();
       if (old.length) await col.deleteMany({ _id: { $in: old.map(x => x._id) } });
       return send(res, 200, { ok: true });

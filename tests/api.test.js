@@ -139,7 +139,7 @@ const rejected = async (fn) => { const r = await fn(); assert.strictEqual(r.stat
   // ---------- PSM pesanan masuk (specs/08-pesanan-masuk.md)
   await test("PSM", "pesanan masuk: publik hanya menulis; harga dari katalog; kode ganda ditimpa; terkunci bila sudah diinvoice", async () => {
     const data = (await call("GET", "/api/data", undefined, null)).body, orders = (await call("GET", "/api/orders")).body;
-    const who = { name: "Ibu Uji", phone: "+62 812-3456-7890" };
+    const who = { name: "Ibu Uji", phone: "+62 812-3456-7890", address: "  Jl. Uji No. 1, Jakarta  " };
     const pub = (b) => call("POST", "/api/inbox", { ...who, ...b }, null), codes = ["PSN-UJI001", "PSN-UJI002"];
     const list = async () => (await call("GET", "/api/inbox")).body.filter(x => codes.includes(x.code));
     try {
@@ -151,7 +151,11 @@ const rejected = async (fn) => { const r = await fn(); assert.strictEqual(r.stat
       const [r] = await list();
       assert.strictEqual((await list()).length, 1);
       assert.deepStrictEqual(r.items, [{ id: "uji-p", name: "Barang Uji", price: 5000, qty: 2 }]);
-      assert.deepStrictEqual([r.name, r.phone], ["Ibu Uji", "081234567890"]); // HP dinormalisasi seperti INV-5
+      assert.deepStrictEqual([r.name, r.phone, r.address], ["Ibu Uji", "081234567890", "Jl. Uji No. 1, Jakarta"]); // HP dinormalisasi seperti INV-5; alamat dirapikan
+      assert.strictEqual((await pub({ code: codes[1], items: body.items, address: "x".repeat(400) })).status, 200); // alamat dipotong 300, tidak ditolak
+      assert.strictEqual((await list()).find(x => x.code === codes[1]).address.length, 300);
+      assert.strictEqual((await pub({ code: codes[1], items: body.items, address: undefined })).status, 200); // tanpa alamat tetap tercatat (halaman lama)
+      await call("DELETE", "/api/inbox/" + codes[1]);
       // PSM-2: nama wajib; HP harus nomor Indonesia
       assert.strictEqual((await pub({ code: codes[1], items: body.items, name: " " })).status, 400);
       assert.strictEqual((await pub({ code: codes[1], items: body.items, phone: "12345" })).status, 400);
