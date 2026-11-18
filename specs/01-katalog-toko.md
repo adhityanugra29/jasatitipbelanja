@@ -12,6 +12,7 @@ Payment gateway. Akun pelanggan. Pelanggan memilih kurir (kurir ditentukan admin
 
 **Data dan kartu**
 - **TOK-1** Katalog dimuat dari `GET /api/data`. Kalau gagal, tampil "Gagal memuat katalog". — ⬜
+- **TOK-21** Barang **stok habis disembunyikan** dari daftar. Barang itu baru muncul (dengan tombol "Stok habis" nonaktif) bila pengunjung mengetik di kolom pencarian dan namanya/keterangannya cocok. Pilihan kategori saja tidak memunculkannya. — ⬜ belum diuji
 - **TOK-2** Kartu menampilkan foto (atau kotak 🛍️ kalau tidak ada), badge, nama, keterangan (atau kategori), harga, dan "Sisa N" / "Stok habis" bila stok diatur. — ✅ dicek di layar 390
 - **TOK-3** Badge diatur admin per barang, satu per barang: `new` → "New Stock", `hot` → "🔥 Hot Item", `flash` → "⚡ Flash Sale". Tanpa badge = tidak ada label. — ✅ dicek di layar 390
 - **TOK-4** Semua teks dari data di-escape (tidak ada HTML yang lolos). — ⬜
@@ -30,7 +31,7 @@ Payment gateway. Akun pelanggan. Pelanggan memilih kurir (kurir ditentukan admin
 - **TOK-11** "Pesan via WhatsApp" membuka `wa.me/<nomor WA toko>` dengan pesan berisi tiap barang, jumlah, subtotal, total, serta baris "Kode pesanan: PSN-XXXXXX" (lihat PSM-1) dan baris "Nama:" dan "Alamat:" untuk diisi pelanggan. Tombol tersembunyi kalau keranjang kosong. — ⬜
 
 **Tampilan (rombak)**
-- **TOK-13** Kepala ringkas (logo kecil di samping tagline "We make shopping easy"; tanpa judul "Open Order"). Lebar isi maks 1040px. Tombol keranjang berupa pil di tengah (bukan bilah selebar layar), putih saat kosong, pink saat berisi. Tombol "Tambah" bergaris tepi pink. — ⬜ belum dicek di browser (390 dan desktop)
+- **TOK-13** Kepala ringkas (logo kecil di samping tagline "We make shopping easy"; tanpa judul "Open Order"). Lebar isi maks 1040px. Tombol keranjang berupa pil di tengah (bukan bilah selebar layar), pink dan hanya tampil saat keranjang berisi (kosong = tidak ada tombol). Tombol "Tambah" bergaris tepi pink. — ⬜ belum dicek di browser (390 dan desktop)
 
 **Urutan**
 - **TOK-14** Dropdown **Urutan** di paling kiri, tanpa opsi "bawaan": **Harga tertinggi** (tinggi → rendah, **pilihan awal**) dan **Harga terendah** (rendah → tinggi). Berlaku bersama pencarian dan kategori, dan memuat ulang daftar dari awal (TOK-7). Barang stok habis tetap ikut diurutkan menurut harga. Tidak disimpan antar kunjungan (setiap kunjungan mulai dari Harga tertinggi). — ⬜ belum diuji

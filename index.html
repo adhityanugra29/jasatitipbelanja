@@ -75,7 +75,7 @@
   #fab .tot { margin-left:auto; padding:0 14px; font-size:1.05rem; white-space:nowrap; }
   #fab:not(.empty) .eic { background:#ffffff2e; color:#fff; box-shadow:none; position:relative; }
   #fab .n { position:absolute; top:-4px; right:-4px; min-width:20px; height:20px; padding:0 4px; box-sizing:border-box; border-radius:99px; background:#fff; color:var(--pink-d); font-size:.75rem; display:grid; place-items:center; }
-  #fab.empty { padding-right:20px; background:var(--pink-soft); color:var(--ink); border:1.5px solid #fff; box-shadow:0 6px 20px #0E3B431F; }
+  #fab.empty { display:none; } /* keranjang kosong: tombol tidak ditampilkan (TOK-13) */
   #fab .eic { flex:none; width:44px; height:44px; border-radius:50%; background:#fff; color:var(--pink-d); display:grid; place-items:center; box-shadow:0 2px 8px #D32F8230; }
   #fab .eic svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
   #fab .et { display:flex; flex-direction:column; line-height:1.25; }
@@ -220,7 +220,7 @@ addEventListener("scroll", autoMore, { passive: true });
 
 function renderGrid() {
   const q = $("q").value.toLowerCase();
-  const list = PRODUCTS.filter(p => (!sel.size || sel.has(p.cat)) && (p.name + " " + p.desc).toLowerCase().includes(q));
+  const list = PRODUCTS.filter(p => (q || max(p) >= 1) && (!sel.size || sel.has(p.cat)) && (p.name + " " + p.desc).toLowerCase().includes(q)); // TOK-21: stok habis tersembunyi sampai dicari
   list.sort((a, b) => sortBy === "asc" ? a.price - b.price : b.price - a.price);
   const pages = Math.max(1, Math.ceil(list.length / PER));
   page = Math.min(page, pages);
@@ -260,7 +260,7 @@ function renderCart() {
   const cartIc = `<svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 8H6"/></svg>`;
   $("fab").innerHTML = count
     ? `<span class="eic">${cartIc}<span class="n">${count}</span></span><span class="et">Lihat Keranjang<small>Belum termasuk ongkir</small></span><b class="tot">${rp(total)}</b>`
-    : `<span class="eic">${cartIc}</span><span class="et">Keranjang masih kosong<small>Ketuk + pada barang untuk mulai belanja</small></span>`;
+    : "";
   $("items").innerHTML = rows.map(p => `
     <div class="crow">
       ${p.img ? `<img src="${esc(p.img)}" alt="">` : `<div class="nopic">🛍️</div>`}
