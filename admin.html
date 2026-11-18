@@ -275,6 +275,20 @@
   #invoice .vtot .g { border-top:2px solid #111; margin-top:6px; padding-top:10px; font-size:1.15rem; font-weight:800; }
   #invoice .vfoot { display:flex; justify-content:space-between; gap:16px; align-items:flex-end; }
   #invoice .vfoot img { height:56px; }
+  #invoice .vfn { margin-top:14px; padding-top:10px; border-top:1px dashed #bbb; font-size:.8rem; color:#555; }
+  .rows { display:flex; flex-direction:column; gap:8px; margin:8px 0; }
+  .srow { display:flex; align-items:center; gap:6px; }
+  .srow input { margin:0; flex:1; min-width:0; }
+  .srow small { flex:none; opacity:.65; white-space:nowrap; }
+  .srow .dots { flex:none; width:40px; height:40px; }
+  .srow .dots.del { color:#c00; }
+  .srow.off input { opacity:.5; }
+  .sadd { display:flex; gap:8px; margin-top:8px; }
+  .sadd input { margin:0; flex:1; }
+  .sadd .b { padding:10px 16px; }
+  .tgl { flex:none; padding:8px 12px; border:1.5px solid var(--line); border-radius:99px; background:#fff; font:inherit; font-size:.8rem; font-weight:700; color:#5E8388; cursor:pointer; }
+  .tgl.on { background:var(--teal-soft); border-color:var(--teal); color:var(--teal-d); }
+  textarea { width:100%; padding:10px; font:inherit; color:var(--ink); border:1.5px solid var(--line); border-radius:12px; margin:4px 0 8px; background:#fff; resize:vertical; }
   #invoice .vthx { text-align:right; font-style:italic; color:#666; font-size:.85rem; }
   @media (max-width:700px) { #invoice { padding:16px; } #invoice .vcols { grid-template-columns:1fr; } #invoice .vhead { flex-direction:column; } #invoice .vmeta { text-align:left; } }
   .items { white-space:pre-line; font-size:.92rem; min-width:170px; max-width:300px; }
@@ -446,7 +460,19 @@
       <div class="pagehead"><h2>Pengaturan Toko</h2></div>
       <div class="otabs" id="stabs">
         <button class="on" data-stab="toko">Toko</button>
+        <button data-stab="kategori">Kategori</button>
+        <button data-stab="kurir">Kurir</button>
         <button data-stab="invoice">Invoice</button>
+      </div>
+      <div class="box" data-sp="kategori" hidden>
+        <small>Urutan di sini dipakai di filter toko dan pilihan kategori barang. Mengubah nama ikut mengubah semua barangnya. Kategori yang masih dipakai barang tidak bisa dihapus.</small>
+        <div class="rows" id="cat-rows"></div>
+        <div class="sadd"><input id="cat-new" placeholder="Kategori baru" maxlength="40"><button type="button" class="b" id="cat-add">+ Tambah</button></div>
+      </div>
+      <div class="box" data-sp="kurir" hidden>
+        <small>Kurir aktif muncul sebagai pilihan di halaman Pengiriman. Nama kurir tetap boleh diketik bebas di sana. Pesanan lama tidak berubah.</small>
+        <div class="rows" id="cour-rows"></div>
+        <div class="sadd"><input id="cour-new" placeholder="Kurir baru" maxlength="40"><button type="button" class="b" id="cour-add">+ Tambah</button></div>
       </div>
       <div class="box" data-sp="toko">
         <label>Nomor WhatsApp toko (contoh 6281234567890)</label><input id="wa" inputmode="numeric">
@@ -459,6 +485,9 @@
         <div class="two"><div><label>Telepon / WhatsApp</label><input id="cfg-phone"></div><div><label>Email</label><input id="cfg-email"></div></div>
         <label>NPWP (opsional)</label><input id="cfg-npwp">
         <label>Nama admin</label><input id="cfg-admin">
+        <label>Kalimat penutup (kosongkan = bawaan)</label><textarea id="cfg-closing" rows="2" maxlength="300" placeholder="Terima kasih telah mempercayakan belanja Anda kepada kami."></textarea>
+        <label>Catatan kaki (opsional, mis. syarat pembayaran / retur)</label><textarea id="cfg-footnote" rows="3" maxlength="300"></textarea>
+        <label>Awalan nomor invoice (huruf/angka, maks. 6)</label><input id="cfg-invPrefix" maxlength="6" placeholder="INV"><small>Hanya untuk invoice baru; nomor lama tidak berubah.</small>
       </div>
       <button class="b dark" id="save">💾 Simpan Pengaturan</button>
     </section>
@@ -471,7 +500,7 @@
   <div id="label" class="lbl"></div>
   <div class="wact noprint" style="margin-top:12px"><button class="b dark" id="lprint">🖨️ Cetak Label</button><button class="b" id="lclose">Tutup</button></div>
 </dialog>
-<datalist id="couriers"><option value="Kurir Internal"><option value="Diambil Sendiri oleh Pelanggan"><option value="JNE"><option value="J&amp;T"><option value="SiCepat"><option value="GoSend"><option value="Grab Express"></datalist>
+<datalist id="couriers"></datalist>
 <dialog id="mdlg">
   <h2 id="mtitle">Cocokkan pesanan</h2>
   <p id="minfo" style="margin-top:0"></p>
@@ -524,7 +553,7 @@
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 const PER = 10; // PAG-1: baris (kartu) per halaman di semua daftar admin
-let page = 1, pw = "", data = { wa: "", notice: "", products: [] };
+let page = 1, pw = "", data = { wa: "", notice: "", products: [], cats: [] };
 
 async function api(method, url, body) {
   const r = await fetch(url, { method, headers: { "x-admin": pw, "content-type": "application/json" }, body: body && JSON.stringify(body) });
@@ -536,7 +565,7 @@ async function api(method, url, body) {
 function render() {
   $("wa").value = data.wa; $("notice").value = data.notice || "";
   $("tcount").textContent = data.products.length;
-  $("cats").innerHTML = [...new Set(data.products.map(p => p.cat).filter(Boolean))].map(c => `<option value="${esc(c)}">`).join("");
+  $("cats").innerHTML = [...new Set([...(data.cats || []), ...data.products.map(p => p.cat)].filter(Boolean))].map(c => `<option value="${esc(c)}">`).join("");
   page = clampPage(page, data.products.length);
   const start = (page - 1) * PER; // PAG-4: indeks global, supaya Edit/Hapus menunjuk barang yang benar di halaman mana pun
   $("list").innerHTML = `<div class="cards">` + data.products.slice(start, start + PER).map((p, i) => { return `
@@ -601,7 +630,7 @@ $("go").onclick = async () => {
   try {
     await api("GET", "/api/check");
     data = await (await fetch("/api/data")).json();
-    orders = await api("GET", "/api/orders"); inbox = await api("GET", "/api/inbox"); settings = await api("GET", "/api/settings"); fillCfg(); renderAll();
+    orders = await api("GET", "/api/orders"); inbox = await api("GET", "/api/inbox"); settings = await api("GET", "/api/settings"); fillCfg(); courDatalist(); renderAll();
     $("login").hidden = true; $("app").hidden = false; render();
   } catch (e) { $("err").textContent = e.message; }
   finally { $("go").disabled = false; $("loading").hidden = true; }
@@ -617,6 +646,7 @@ function showView(v) {
   document.querySelectorAll("[data-view]").forEach(x => x.classList.toggle("on", x.dataset.view === (v === "bulk" ? "katalog" : v)));
   $("side").classList.remove("open"); say("");
   if (v === "bulk") wz();
+  if (v === "pengaturan") fillCfg(); // kategori baru dari Tambah Produk ikut tampil; draf lama dibuang
   if (v === "pesanan") api("GET", "/api/inbox").then(r => { inbox = r; renderInbox(); }).catch(e => say(e.message, true));
   if (v === "invoice" || v === "pengiriman" || v === "pelanggan" || v === "pesanan") renderAll();
 }
@@ -629,7 +659,7 @@ $("add").onclick = () => {
 };
 // Katalog langsung tersimpan setiap kali barang diedit atau dihapus (tidak ada tombol simpan terpisah)
 async function saveCatalog(msg) {
-  try { await api("PUT", "/api/data", data); say(msg); return true; }
+  try { const r = await api("PUT", "/api/data", data); if (r.cats) data.cats = r.cats; say(msg); return true; }
   catch (err) { say(err.message, true); $("eerr").textContent = err.message; return false; }
 }
 let editing = -1, editBackup = null;
@@ -679,13 +709,57 @@ document.addEventListener("input", e => { // capture: berjalan sebelum pengendal
   let pos = 0, c = 0; while (pos < t.value.length && c < keep) { if (/[0-9]/.test(t.value[pos])) c++; pos++; }
   try { t.setSelectionRange(pos, pos); } catch {}
 }, true);
-const CFG = ["storeName", "address", "phone", "email", "npwp", "admin"];
+const CFG = ["storeName", "address", "phone", "email", "npwp", "admin", "closing", "footnote", "invPrefix"];
+const DEF_CLOSING = "Terima kasih telah mempercayakan belanja Anda kepada kami.";
 let settings = {};
-const fillCfg = () => CFG.forEach(k => { $("cfg-" + k).value = settings[k] || ""; });
+// SET-6..8: daftar kategori dan kurir diedit sebagai draf, baru berlaku saat Simpan Pengaturan
+let catRows = [], courRows = []; // kategori: {orig, name}; kurir: {name, on}
+const usedBy = c => data.products.filter(p => p.cat === c).length;
+const fillCfg = () => {
+  CFG.forEach(k => { $("cfg-" + k).value = settings[k] || ""; });
+  catRows = (data.cats?.length ? data.cats : [...new Set(data.products.map(p => p.cat).filter(Boolean))]).map(c => ({ orig: c, name: c }));
+  courRows = (settings.couriers || []).map(c => ({ ...c }));
+  renderCfgRows();
+};
+const courDatalist = () => { $("couriers").innerHTML = (settings.couriers || []).filter(c => c.on).map(c => `<option value="${esc(c.name)}">`).join(""); };
+function renderCfgRows() {
+  const row = (i, r, kind, extra, canDel) => `<div class="srow${r.on === false ? " off" : ""}"><input value="${esc(r.name)}" data-k="${kind}" data-i="${i}" maxlength="40" aria-label="Nama">${extra}
+    <button type="button" class="dots" data-mv="${kind}:${i}:-1" aria-label="Naik"${i === 0 ? " disabled" : ""}>↑</button><button type="button" class="dots" data-mv="${kind}:${i}:1" aria-label="Turun">↓</button>
+    ${canDel}</div>`;
+  $("cat-rows").innerHTML = catRows.map((r, i) => row(i, r, "cat", r.orig ? `<small>${usedBy(r.orig)} barang</small>` : "", `<button type="button" class="dots del" data-rm="cat:${i}" aria-label="Hapus">🗑</button>`)).join("") || "<p>Belum ada kategori.</p>";
+  $("cour-rows").innerHTML = courRows.map((r, i) => row(i, r, "cour", `<button type="button" class="tgl${r.on ? " on" : ""}" data-tg="${i}">${r.on ? "Aktif" : "Nonaktif"}</button>`, `<button type="button" class="dots del" data-rm="cour:${i}" aria-label="Hapus">🗑</button>`)).join("") || "<p>Belum ada kurir.</p>";
+}
+document.querySelector('[data-sp="kategori"]').parentElement.addEventListener("input", e => {
+  const t = e.target, r = t.dataset.k === "cat" ? catRows[t.dataset.i] : t.dataset.k === "cour" ? courRows[t.dataset.i] : null;
+  if (r) r.name = t.value;
+});
+document.querySelector('[data-sp="kategori"]').parentElement.addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  const list = k => k === "cat" ? catRows : courRows, dup = (l, n, skip) => l.some((x, i) => i !== skip && x.name.trim().toLowerCase() === n.toLowerCase());
+  if (b.dataset.mv) { const [k, i, d] = b.dataset.mv.split(":"), l = list(k), j = +i + +d; if (j >= 0 && j < l.length) { [l[i], l[j]] = [l[j], l[i]]; renderCfgRows(); } }
+  else if (b.dataset.rm) {
+    const [k, i] = b.dataset.rm.split(":"), l = list(k), r = l[i];
+    if (k === "cat" && r.orig && usedBy(r.orig)) return say(`Kategori "${r.orig}" masih dipakai ${usedBy(r.orig)} barang. Pindahkan barangnya dulu.`, true);
+    l.splice(i, 1); renderCfgRows();
+  } else if (b.dataset.tg) { courRows[b.dataset.tg].on = !courRows[b.dataset.tg].on; renderCfgRows(); }
+  else if (b.id === "cat-add" || b.id === "cour-add") {
+    const k = b.id === "cat-add" ? "cat" : "cour", inp = $(k + "-new"), n = inp.value.trim(), l = list(k);
+    if (!n) return; if (dup(l, n, -1)) return say("Nama itu sudah ada.", true);
+    l.push(k === "cat" ? { orig: "", name: n } : { name: n, on: true }); inp.value = ""; renderCfgRows();
+  }
+});
 $("save").onclick = async () => { // hanya di halaman Pengaturan
-  grab(); settings = { ...settings, ...Object.fromEntries(CFG.map(k => [k, $("cfg-" + k).value.trim()])) }; // rekening tetap dari server
+  // validasi draf: nama tidak kosong dan tidak kembar
+  const bad = (l, what) => { const s = new Set(); for (const r of l) { const n = r.name.trim().toLowerCase(); if (!n) return `Nama ${what} tidak boleh kosong.`; if (s.has(n)) return `Nama ${what} "${r.name.trim()}" dobel.`; s.add(n); } return ""; };
+  const err0 = bad(catRows, "kategori") || bad(courRows, "kurir"); if (err0) return say(err0, true);
+  grab();
+  // ubah nama kategori ikut mengubah barangnya (SET-7)
+  catRows.forEach(r => { const n = r.name.trim(); if (r.orig && r.orig !== n) data.products.forEach(p => { if (p.cat === r.orig) p.cat = n; }); r.orig = n; r.name = n; });
+  data.cats = catRows.map(r => r.name);
+  settings = { ...settings, ...Object.fromEntries(CFG.map(k => [k, $("cfg-" + k).value.trim()])), couriers: courRows.map(c => ({ name: c.name.trim(), on: c.on })) }; // rekening tetap dari server
   try { await api("PUT", "/api/settings", settings); } catch (err) { return say(err.message, true); }
-  await saveCatalog("✅ Pengaturan tersimpan.");
+  courDatalist();
+  if (await saveCatalog("✅ Pengaturan tersimpan.")) render();
 };
 
 // ===== tambah banyak produk: 1 pilih foto, 2 isi data, 3 selesai =====
@@ -1014,7 +1088,7 @@ $("v-pesanan").addEventListener("click", async e => {
 });
 
 function nextInvoice() {
-  const p = "INV-" + today().slice(0, 7).replace("-", "");
+  const p = (settings.invPrefix || "INV") + "-" + today().slice(0, 7).replace("-", "");
   return p + String(orders.filter(o => o.invoice.startsWith(p)).length + 1).padStart(4, "0");
 }
 
@@ -1111,8 +1185,8 @@ function invoiceHtml(o) {
     <hr class="vline">
     <div class="vfoot">
       <div>${st.bankNo ? `<small>PAYMENT DETAILS</small>No. Rekening: ${esc(st.bankNo)}${st.bankName ? ` (${esc(st.bankName)})` : ""}${st.bankHolder ? `<br>Atas Nama: ${esc(st.bankHolder)}` : ""}` : ""}</div>
-      <div class="vthx"><img src="/assets/logo.png" alt=""><br>Terima kasih telah mempercayakan<br>belanja Anda kepada kami.${st.admin ? `<br><br>${esc(st.admin)}` : ""}</div>
-    </div>`;
+      <div class="vthx"><img src="/assets/logo.png" alt=""><br>${esc(st.closing || DEF_CLOSING).split("\n").join("<br>")}${st.admin ? `<br><br>${esc(st.admin)}` : ""}</div>
+    </div>${st.footnote ? `<div class="vfn">${esc(st.footnote).split("\n").join("<br>")}</div>` : ""}`;
 }
 function openInvoiceView(o) { $("invoice").innerHTML = invoiceHtml(o); $("vdlg").showModal(); }
 $("vprint").onclick = () => window.print();

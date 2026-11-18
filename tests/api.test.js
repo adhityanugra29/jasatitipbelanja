@@ -50,7 +50,7 @@ const rejected = async (fn) => { const r = await fn(); assert.strictEqual(r.stat
       const [a, b] = d.products;
       assert.deepStrictEqual([a.id, a.price, a.cat, a.badge, a.stock, a.img], ["1", 0, "Lainnya", "", null, ""]);
       assert.deepStrictEqual([b.badge, b.stock, b.img], ["hot", 3, "/uploads/abc.jpg"]);
-    } finally { await call("PUT", "/api/data", before); }
+    } finally { await call("PUT", "/api/data", { ...before, cats: before.cats ?? [...new Set(before.products.map(p => p.cat))] }); }
   });
 
   // ---------- API-4 aturan pesanan (kasus ditolak: tidak menulis)
@@ -133,6 +133,40 @@ const rejected = async (fn) => { const r = await fn(); assert.strictEqual(r.stat
       assert.strictEqual(after.storeName, "Uji");
       assert.strictEqual(after.bankNo, bank);
       assert.notStrictEqual(after.bankName, "XX");
+    } finally { await call("PUT", "/api/settings", before); }
+  });
+
+  // ---------- SET-6/7 kategori terkelola
+  await test("SET-6/7", "kategori: urutan dipertahankan, kembar dibuang, yang masih dipakai tidak bisa dihapus, kategori baru dari barang ditambahkan", async () => {
+    const before = (await call("GET", "/api/data", undefined, null)).body;
+    try {
+      const prod = (id, cat) => ({ id, name: "P" + id, price: 1, cat, badge: "", stock: null, img: "" });
+      const put = await call("PUT", "/api/data", { wa: "1", notice: "", cats: ["Tas", "tas", "Koper", " Sepatu "], products: [prod("a", "koper"), prod("b", "Tas")] });
+      assert.strictEqual(put.status, 200);
+      const d = (await call("GET", "/api/data", undefined, null)).body;
+      assert.deepStrictEqual(d.cats, ["Tas", "Koper", "Sepatu"]);
+      assert.strictEqual(d.products[0].cat, "Koper"); // huruf mengikuti daftar
+      await rejected(() => call("PUT", "/api/data", { wa: "1", notice: "", cats: ["Tas", "Sepatu"], products: [prod("a", "Koper"), prod("b", "Tas")] }));
+      assert.strictEqual((await call("PUT", "/api/data", { wa: "1", notice: "", cats: ["Tas", "Sepatu"], products: [prod("b", "Tas")] })).status, 200); // barangnya dipindah/dihapus: boleh
+      assert.strictEqual((await call("PUT", "/api/data", { wa: "1", notice: "", cats: ["Tas"], products: [prod("b", "Tas"), prod("c", "Baru")] })).status, 200);
+      assert.deepStrictEqual((await call("GET", "/api/data", undefined, null)).body.cats, ["Tas", "Baru"]);
+    } finally { await call("PUT", "/api/data", { ...before, cats: before.cats ?? [...new Set(before.products.map(p => p.cat))] }); }
+  });
+
+  // ---------- SET-8/10/11 kurir, kalimat invoice, awalan nomor
+  await test("SET-8/10/11", "kurir terkelola, kalimat penutup/catatan kaki dibatasi, awalan nomor dibersihkan", async () => {
+    const before = (await call("GET", "/api/settings")).body;
+    try {
+      assert.ok(before.couriers.length >= 1 && before.couriers.every(c => c.name && typeof c.on === "boolean"), "bawaan kurir harus ada");
+      assert.strictEqual(before.invPrefix.length > 0, true);
+      assert.strictEqual((await call("PUT", "/api/settings", { couriers: [{ name: "JNE", on: true }, { name: "jne", on: true }, { name: "Gojek", on: false }, { name: " " }], closing: "x".repeat(400), footnote: "Retur 3 hari", invPrefix: "ab-1 2$" })).status, 200);
+      const s = (await call("GET", "/api/settings")).body;
+      assert.deepStrictEqual(s.couriers, [{ name: "JNE", on: true }, { name: "Gojek", on: false }]);
+      assert.strictEqual(s.closing.length, 300);
+      assert.strictEqual(s.footnote, "Retur 3 hari");
+      assert.strictEqual(s.invPrefix, "AB12");
+      assert.strictEqual((await call("PUT", "/api/settings", { invPrefix: "" })).status, 200);
+      assert.strictEqual((await call("GET", "/api/settings")).body.invPrefix, "INV");
     } finally { await call("PUT", "/api/settings", before); }
   });
 

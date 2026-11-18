@@ -209,7 +209,8 @@ const fitCols = () => {
 fitCols(); addEventListener("resize", fitCols);
 let sortBy = "desc"; // "desc" | "asc" (TOK-14): awal = harga tertinggi
 const SORTS = { asc: "Harga terendah", desc: "Harga tertinggi" };
-const cats = () => [...new Set(PRODUCTS.map(p => p.cat).filter(Boolean))];
+let CATS = []; // urutan kategori dari admin (SET-6); kategori tanpa barang tidak ditampilkan
+const cats = () => [...new Set([...CATS, ...PRODUCTS.map(p => p.cat)])].filter(c => c && PRODUCTS.some(p => p.cat === c));
 
 // daftar bertambah sendiri ke bawah saat penanda di dasar daftar hampir terlihat
 function autoMore() {
@@ -330,7 +331,7 @@ $("fab").onclick = () => { shopY = scrollY; location.hash = "keranjang"; };
 route();
 
 fetch("/api/data").then(r => r.json()).then(d => {
-  ({ wa: WA, products: PRODUCTS } = d);
+  ({ wa: WA, products: PRODUCTS } = d); CATS = d.cats || [];
   if (d.notice) { $("notice").textContent = d.notice; $("notice").hidden = false; }
   renderFilter(); renderGrid(); renderCart();
 }).catch(() => { $("grid").innerHTML = `<p class="empty">Gagal memuat katalog. Coba lagi nanti 🙏</p>`; });

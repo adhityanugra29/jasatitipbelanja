@@ -8,6 +8,10 @@ if (!PASS) { console.error("Set ADMIN_PASSWORD dulu."); process.exit(1); }
 const DIR = __dirname;
 if (!process.env.MONGODB_URI) { console.error("Set MONGODB_URI dulu."); process.exit(1); }
 // rekening tujuan transfer (tampil di footer invoice): ubah di sini, tidak ada di halaman admin
+// SET-8/10/11: bawaan bila admin belum mengaturnya
+const DEF_COURIERS = ["Kurir Internal", "Diambil Sendiri oleh Pelanggan", "JNE", "J&T", "SiCepat", "GoSend"].map(name => ({ name, on: true }));
+// daftar nama unik (tanpa membedakan huruf besar/kecil), dipotong panjangnya
+const uniq = (list, n, max) => { const seen = new Set(); return (Array.isArray(list) ? list : []).map(v => String(v ?? "").trim().slice(0, n)).filter(v => v && !seen.has(v.toLowerCase()) && seen.add(v.toLowerCase())).slice(0, max); };
 const BANK = { bankName: "BCA", bankNo: "0000000000", bankHolder: "Nama Pemilik Rekening" };
 const DEFAULTS = { data: { wa: "6281234567890", products: [] }, orders: [], settings: {} };
 
@@ -109,10 +113,15 @@ const handler = async (req, res) => {
       return send(res, 200, { ok: true });
     }
     if (req.method === "GET" && url === "/api/orders") return send(res, 200, await kv("orders"));
-    if (req.method === "GET" && url === "/api/settings") return send(res, 200, { ...await kv("settings"), ...BANK });
+    if (req.method === "GET" && url === "/api/settings") { const st = await kv("settings"); return send(res, 200, { ...st, couriers: Array.isArray(st.couriers) ? st.couriers : DEF_COURIERS, closing: st.closing ?? "", footnote: st.footnote ?? "", invPrefix: st.invPrefix || "INV", ...BANK }); }
     if (req.method === "PUT" && url === "/api/settings") {
       const d = await body(req);
       const out = Object.fromEntries(["storeName", "address", "phone", "email", "npwp", "admin"].map(k => [k, String(d[k] ?? "").trim().slice(0, 200)]));
+      // SET-8: kurir terkelola (nama unik, aktif/nonaktif); SET-10/11: kalimat penutup, catatan kaki, awalan nomor invoice
+      const cin = Array.isArray(d.couriers) ? d.couriers : DEF_COURIERS;
+      out.couriers = uniq(cin.map(c => c?.name), 40, 30).map(name => ({ name, on: cin.find(c => String(c?.name ?? "").trim().toLowerCase() === name.toLowerCase())?.on !== false }));
+      out.closing = String(d.closing ?? "").trim().slice(0, 300); out.footnote = String(d.footnote ?? "").trim().slice(0, 300);
+      out.invPrefix = String(d.invPrefix ?? "").replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 6) || "INV";
       await setKv("settings", out);
       return send(res, 200, { ok: true });
     }
@@ -156,8 +165,17 @@ const handler = async (req, res) => {
         badge: ["new", "hot", "flash"].includes(p.badge) ? p.badge : "",
         stock: p.stock === "" || p.stock == null ? null : Math.max(0, Math.floor(Number(p.stock)) || 0), img: /^\/uploads\/[\w-]+\.(jpg|png|webp)$/.test(p.img) ? p.img : "",
       }));
-      await setKv("data", { wa: String(d.wa || "").replace(/\D/g, ""), notice: String(d.notice || "").slice(0, 200), products });
-      return send(res, 200, { ok: true });
+      // SET-6/7: daftar kategori terurut. Kategori yang dibuang tapi masih dipakai barang ditolak; kategori baru dari barang ditambahkan di belakang.
+      const prev = await kv("data"), prevCats = uniq(prev.cats ?? (prev.products || []).map(p => p.cat), 40, 50);
+      const cats = uniq(d.cats ?? prevCats, 40, 50), same = (a, b) => a.toLowerCase() === b.toLowerCase();
+      for (const p of products) {
+        const hit = cats.find(c => same(c, p.cat));
+        if (hit) { p.cat = hit; continue; }
+        if (d.cats && prevCats.some(c => same(c, p.cat))) return send(res, 400, { error: `Kategori "${p.cat}" masih dipakai ${products.filter(q => same(q.cat, p.cat)).length} barang. Pindahkan barangnya dulu.` });
+        cats.push(p.cat);
+      }
+      await setKv("data", { wa: String(d.wa || "").replace(/\D/g, ""), notice: String(d.notice || "").slice(0, 200), products, cats });
+      return send(res, 200, { ok: true, cats });
     }
     if (req.method === "POST" && url === "/api/upload") {
       const m = /^data:image\/(jpeg|png|webp);base64,(.+)$/.exec((await body(req)).dataUrl || "");
