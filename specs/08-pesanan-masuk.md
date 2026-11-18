@@ -16,7 +16,7 @@ Invoice dibuat otomatis (admin tetap membuatnya). Mengetahui apakah pelanggan be
 ## Kriteria
 
 **Mencatat**
-- **PSM-1** Menekan "Pesan via WhatsApp" mengirim `POST /api/inbox` (publik) berisi kode, nama, nomor HP, dan daftar `{id, qty}`. Pesan WhatsApp memuat baris `Kode pesanan: PSN-XXXXXX`, `Nama:` dan `HP:` (terisi dari keranjang), dan `Alamat:` (diisi pelanggan). WhatsApp tetap terbuka walau pengiriman ke server gagal. — ⬜ kode dan pengiriman ditulis di `index.html`; sintaks diperiksa, belum dicoba di browser
+- **PSM-1** Menekan "Pesan via WhatsApp" mengirim `POST /api/inbox` (publik) berisi kode, nama, nomor HP, dan daftar `{id, qty}`. Pesan WhatsApp memuat baris `Kode pesanan: PSN-XXXXXX`, `Nama:` dan `HP:` (terisi dari keranjang), dan `Alamat:` (diisi pelanggan). WhatsApp tetap terbuka walau pengiriman ke server gagal. — ✅ pesanan dari klik tombol di halaman keranjang tercatat di server (Chrome CDP + server demo); produksi ⬜
 - **PSM-2** Server menyimpan nama dan harga barang **dari katalog** saat itu (kiriman klien soal harga/nama diabaikan) beserta waktu. Barang yang tidak ada di katalog diabaikan; tanpa barang valid → 400. Nama wajib (≤100); HP dinormalisasi seperti INV-5 dan harus `^08d{8,12}$`, kalau tidak → 400. Kode yang sama dikirim lagi tidak membuat pesanan ganda. — ✅ `tests/api.test.js` (PSM)
 - **PSM-3** Perlindungan spam: kode harus berformat `^PSN-[A-Z0-9]{6}$`; maks. 50 jenis barang, qty 1–999; isi permintaan ≤20KB; hanya 500 pesanan terbaru yang disimpan (yang lebih lama dibuang). — ✅ format kode, qty, ukuran isi: `tests/api.test.js` (PSM); batas 500 ⬜
 

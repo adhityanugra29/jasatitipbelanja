@@ -10,15 +10,24 @@
   :root { --pink:#F44D92; --pink-d:#D32F82; --pink-soft:#FFE3EF; --teal:#0BBDB6; --teal-d:#078A85; --teal-soft:#D9F4F2; --ink:#0E3B43; --bg:#FFF8FB; --line:#F3D5E3; --side:#0E3B43; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   button, label, a { touch-action:manipulation; }
-  body { margin:0; font:16px/1.45 "Plus Jakarta Sans",system-ui,sans-serif; color:var(--ink); background:var(--bg); padding:0 16px calc(104px + env(safe-area-inset-bottom)); }
+  body { margin:0; font:16px/1.45 "Plus Jakarta Sans",system-ui,sans-serif; color:var(--ink); background:var(--bg); padding:0 16px; }
   .wrap { max-width:1040px; margin:0 auto; }
+  #shop { padding-bottom:calc(104px + env(safe-area-inset-bottom)); } /* ruang untuk tombol keranjang */
+  [hidden] { display:none !important; }
   h3 { font-family:"Plus Jakarta Sans",sans-serif; }
   /* kepala ringkas: logo di samping judul, supaya barang cepat terlihat */
   .head { display:flex; align-items:center; gap:14px; margin:0 -16px; padding:14px 16px; background:linear-gradient(180deg,var(--pink-soft),var(--bg)); }
   .head img { height:64px; width:64px; flex:none; padding:3px; border-radius:50%; background:#fff; box-shadow:0 4px 14px #F44D9230; }
   .head p { margin:2px 0 0; font-size:.85rem; font-weight:600; color:var(--teal-d); }
   .notice { background:var(--teal-soft); color:var(--teal-d); border-radius:14px; padding:12px 14px; text-align:center; font-weight:700; margin:8px 0 12px; }
-  .tools { display:flex; align-items:center; gap:8px; position:sticky; top:0; z-index:5; background:var(--bg); padding:10px 0; } /* pencarian tetap terlihat saat menggulir */
+  .bar { position:sticky; top:0; z-index:5; background:var(--bg); padding:10px 0; } /* pencarian tetap terlihat saat menggulir */
+  .tools { display:flex; align-items:center; gap:8px; }
+  #fcats { display:flex; flex-wrap:wrap; gap:8px; padding-top:10px; }
+  #fcats[hidden] { display:none; }
+  .chip { position:relative; padding:8px 16px; border-radius:99px; background:#fff; border:1.5px solid var(--line); font-weight:600; cursor:pointer; transition:background .2s,color .2s,border-color .2s; }
+  .chip input { position:absolute; opacity:0; inset:0; margin:0; cursor:pointer; }
+  .chip:has(input:checked) { background:var(--pink-d); border-color:var(--pink-d); color:#fff; }
+  .chip:has(input:focus-visible) { outline:2px solid var(--pink-d); outline-offset:2px; }
   .search { flex:1; display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid var(--line); border-radius:99px; padding:0 18px; color:var(--pink-d); box-shadow:0 2px 10px #0E3B430D; }
   .search:focus-within { border-color:var(--pink); box-shadow:0 0 0 4px #F44D9222; }
   .search input { flex:1; min-width:0; padding:14px 0; font:inherit; font-weight:500; color:var(--ink); border:0; outline:0; background:none; }
@@ -47,7 +56,7 @@
   .step { flex:1; display:flex; align-items:center; justify-content:space-between; background:var(--pink-soft); border-radius:99px; padding:3px; }
   .step b { font-size:1.1rem; }
   .step button:disabled { opacity:.35; cursor:not-allowed; }
-  .step button, .row button { width:42px; height:42px; border-radius:50%; border:0; background:#fff; color:var(--pink-d); font:inherit; font-size:1.25rem; font-weight:700; cursor:pointer; box-shadow:0 1px 4px #0E3B4322; }
+  .step button { width:42px; height:42px; border-radius:50%; border:0; background:#fff; color:var(--pink-d); font:inherit; font-size:1.25rem; font-weight:700; cursor:pointer; box-shadow:0 1px 4px #0E3B4322; }
   .cartbtn { flex:1; height:46px; border:1.5px solid var(--pink-d); border-radius:99px; background:#fff; color:var(--pink-d); display:flex; align-items:center; justify-content:center; gap:8px; font:inherit; font-weight:700; cursor:pointer; }
   .cartbtn:not(:disabled):active { background:var(--pink-d); color:#fff; }
   .cartbtn:disabled { border-color:transparent; background:#EFE6EA; color:#7A6A72; cursor:not-allowed; }
@@ -67,8 +76,21 @@
   dialog { width:min(520px,94vw); border:0; border-radius:24px; padding:20px; background:var(--bg); color:var(--ink); font-family:inherit; }
   dialog::backdrop { background:#0E3B4399; }
   dialog h2 { margin-top:0; font-family:"Plus Jakarta Sans",sans-serif; font-weight:800; }
-  .row { display:flex; align-items:center; gap:8px; padding:10px 0; border-bottom:1px solid var(--line); }
-  .row span:first-child { flex:1; }
+  /* halaman keranjang (TOK-15..20) */
+  #back { display:inline-block; padding:16px 0 4px; color:var(--pink-d); font-weight:700; text-decoration:none; }
+  #cartpage h2 { margin:0 0 4px; font-weight:800; font-size:1.5rem; }
+  #cempty { text-align:center; padding:40px 0; }
+  .crow { display:grid; grid-template-columns:84px 1fr; gap:14px; padding:14px 0; border-bottom:1px solid var(--line); }
+  .crow img, .crow .nopic { width:84px; height:84px; margin:0; border-radius:14px; object-fit:cover; font-size:2rem; }
+  .crow h3 { margin:0; font-size:1rem; line-height:1.3; overflow-wrap:anywhere; }
+  .crow .cline { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:8px; }
+  .cact .step { width:128px; }
+  .cust { padding-top:6px; }
+  .cust h3 { margin:14px 0 0; }
+  .cbar { position:sticky; bottom:0; margin:12px -16px 0; padding:12px 16px calc(12px + env(safe-area-inset-bottom)); background:var(--bg); border-top:1px solid var(--line); box-shadow:0 -6px 18px #0E3B430F; }
+  .cbar small { display:block; font-weight:500; font-size:.8rem; opacity:.7; }
+  .cbar .total { padding:0 0 10px; align-items:flex-start; }
+  .cbar .cnote { margin-top:8px; text-align:center; }
   .total { display:flex; justify-content:space-between; font-weight:800; padding:14px 0; }
   .send, .done { display:block; width:100%; text-align:center; padding:15px; border:0; border-radius:99px; background:var(--pink-d); color:#fff; font:inherit; font-weight:700; text-decoration:none; cursor:pointer; }
   .cust label { display:block; margin-top:8px; font-size:.85rem; font-weight:700; }
@@ -83,19 +105,21 @@
     .head { margin:0 -12px; padding:12px; }
     [data-cols="3"] { display:none; } /* 3 kolom terlalu sempit di HP */
     .grid { gap:12px; }
-    /* jendela keranjang & filter muncul dari bawah, mudah dijangkau ibu jari */
+    .cbar { margin-left:-12px; margin-right:-12px; padding-left:12px; padding-right:12px; }
+    /* jendela keranjang muncul dari bawah, mudah dijangkau ibu jari */
     dialog { margin:auto 0 0; width:100%; max-width:100%; max-height:88vh; overflow:auto; border-radius:24px 24px 0 0; padding-bottom:calc(20px + env(safe-area-inset-bottom)); }
   }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap" id="shop">
   <div class="head">
     <img src="/assets/logo.png" alt="Jasa Titip Belanja">
     <div><p>We make shopping easy</p></div>
   </div>
   <div class="notice" id="notice" hidden></div>
 
+  <div class="bar">
   <div class="tools">
     <label class="search">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
@@ -111,31 +135,33 @@
       <span class="badge" id="fbadge" hidden></span>
     </button>
   </div>
+  <div id="fcats" hidden></div>
+  </div>
 
   <main class="grid" id="grid"></main>
   <nav id="pager" hidden></nav>
 </div>
 <button id="fab"></button>
 
-<dialog id="fdlg">
-  <h2>Filter Kategori</h2>
-  <div id="fcats"></div>
-  <button class="done" id="fdone" style="margin-top:12px">Tampilkan Barang</button>
-  <button class="close" id="freset">Hapus Filter</button>
-</dialog>
-
-<dialog id="dlg">
+<section class="wrap" id="cartpage" hidden>
+  <a id="back" href="#">← Lanjut belanja</a>
   <h2>Keranjang Belanja</h2>
-  <div id="items"></div>
-  <div class="total"><span>Total (belum termasuk ongkir)</span><span id="total"></span></div>
-  <div class="cust">
-    <label>Nama penerima<input id="cname" autocomplete="name"></label>
-    <label>Nomor HP (WhatsApp)<input id="cphone" type="tel" inputmode="tel" autocomplete="tel" placeholder="08123456789"></label>
-    <div id="cerr" role="alert"></div>
+  <div id="cempty" hidden><p>Keranjang masih kosong 🛍️</p><a class="send" href="#">Mulai belanja</a></div>
+  <div id="cfull" hidden>
+    <div id="items"></div>
+    <div class="cust">
+      <h3>Data penerima</h3>
+      <label>Nama penerima<input id="cname" autocomplete="name"></label>
+      <label>Nomor HP (WhatsApp)<input id="cphone" type="tel" inputmode="tel" autocomplete="tel" placeholder="08123456789"></label>
+      <div id="cerr" role="alert"></div>
+    </div>
+    <div class="cbar">
+      <div class="total"><span>Total (belum termasuk ongkir)<small id="ccount"></small></span><span id="total"></span></div>
+      <a class="send" id="send" target="_blank" rel="noopener">Pesan via WhatsApp</a>
+      <small class="cnote">Ongkir dan kurir ditentukan admin lewat WhatsApp.</small>
+    </div>
   </div>
-  <a class="send" id="send" target="_blank" rel="noopener">Pesan via WhatsApp</a>
-  <button class="close" id="close">Tutup</button>
-</dialog>
+</section>
 
 <script>
 let WA = "", PRODUCTS = []; // diisi dari /api/data (diatur lewat halaman /admin)
@@ -171,7 +197,7 @@ const cats = () => [...new Set(PRODUCTS.map(p => p.cat).filter(Boolean))];
 // daftar bertambah sendiri ke bawah saat penanda di dasar daftar hampir terlihat
 function autoMore() {
   const el = $("pager");
-  if (!el.hidden && el.getBoundingClientRect().top < innerHeight + 300) { page++; renderGrid(); }
+  if (!$("shop").hidden && !el.hidden && el.getBoundingClientRect().top < innerHeight + 300) { page++; renderGrid(); }
 }
 addEventListener("scroll", autoMore, { passive: true });
 
@@ -195,7 +221,7 @@ function renderGrid() {
 }
 
 function renderFilter() {
-  $("fcats").innerHTML = cats().map(c => `<label class="chk"><input type="checkbox" data-c="${esc(c)}" ${sel.has(c) ? "checked" : ""}> ${esc(c)}</label>`).join("");
+  $("fcats").innerHTML = cats().map(c => `<label class="chip"><input type="checkbox" data-c="${esc(c)}" ${sel.has(c) ? "checked" : ""}>${esc(c)}</label>`).join("");
   $("fbadge").hidden = !sel.size; $("fbadge").textContent = sel.size;
 }
 
@@ -214,14 +240,21 @@ function renderCart() {
     ? `<span class="eic">${cartIc}<span class="n">${count}</span></span><span class="et">Lihat Keranjang<small>Belum termasuk ongkir</small></span><b class="tot">${rp(total)}</b>`
     : `<span class="eic">${cartIc}</span><span class="et">Keranjang masih kosong<small>Ketuk + pada barang untuk mulai belanja</small></span>`;
   $("items").innerHTML = rows.map(p => `
-    <div class="row"><span>${esc(p.name)}<br><small>${rp(p.price)}</small></span>
-      <button data-dec="${esc(p.id)}" aria-label="${cart[p.id] === 1 ? "Hapus dari keranjang" : "Kurangi"}">${cart[p.id] === 1 ? "🗑" : "−"}</button><b>${cart[p.id]}</b><button data-inc="${esc(p.id)}" ${cart[p.id] >= max(p) ? "disabled" : ""}>+</button></div>`).join("")
-    || "<p>Belum ada barang.</p>";
+    <div class="crow">
+      ${p.img ? `<img src="${esc(p.img)}" alt="">` : `<div class="nopic">🛍️</div>`}
+      <div>
+        <h3>${esc(p.name)}</h3>
+        <div class="sub">${esc(p.desc || p.cat)}</div>
+        <div class="sub">${rp(p.price)}${p.stock == null ? "" : ` · Sisa ${p.stock}`}</div>
+        <div class="cline"><div class="cact">${actHtml(p)}</div><b>${rp(cart[p.id] * p.price)}</b></div>
+      </div>
+    </div>`).join("");
+  $("cfull").hidden = !count; $("cempty").hidden = !!count; // TOK-19; sebelum katalog dimuat keduanya tersembunyi
+  $("ccount").textContent = `${count} barang`;
   $("total").textContent = rp(total);
   const msg = "Halo, saya mau pesan:\n" + rows.map(p => `- ${p.name} x${cart[p.id]} = ${rp(cart[p.id] * p.price)}`).join("\n")
     + `\n\nTotal: ${rp(total)}\nKode pesanan: ${CODE}\n\nNama: ${$("cname").value.trim()}\nHP: ${phone08($("cphone").value)}\nAlamat:`;
   $("send").href = `https://wa.me/${WA}?text=${encodeURIComponent(msg)}`;
-  $("send").style.display = count ? "block" : "none";
   document.querySelectorAll(".act[data-id]").forEach(el => { const p = PRODUCTS.find(p => p.id === el.dataset.id); if (p) el.innerHTML = actHtml(p); });
 }
 
@@ -250,12 +283,18 @@ document.addEventListener("click", e => {
   if (d.cols) setCols(d.cols);
 });
 $("fcats").onchange = e => { e.target.checked ? sel.add(e.target.dataset.c) : sel.delete(e.target.dataset.c); page = 1; renderFilter(); renderGrid(); };
-$("freset").onclick = () => { sel.clear(); page = 1; renderFilter(); renderGrid(); $("fdlg").close(); };
-$("fdone").onclick = () => $("fdlg").close();
-$("fbtn").onclick = () => $("fdlg").showModal();
+$("fbtn").onclick = () => { $("fcats").hidden = !$("fcats").hidden; };
 $("q").oninput = () => { page = 1; renderGrid(); };
-$("fab").onclick = () => $("dlg").showModal();
-$("close").onclick = () => $("dlg").close();
+// TOK-15: keranjang = halaman sendiri di #keranjang (tetap satu berkas; tombol Kembali di browser/HP berfungsi)
+let shopY = 0; // posisi gulir katalog, dipulihkan saat kembali
+const route = () => {
+  const on = location.hash === "#keranjang";
+  $("shop").hidden = $("fab").hidden = on; $("cartpage").hidden = !on;
+  scrollTo(0, on ? 0 : shopY);
+};
+addEventListener("hashchange", route);
+$("fab").onclick = () => { shopY = scrollY; location.hash = "keranjang"; };
+route();
 
 fetch("/api/data").then(r => r.json()).then(d => {
   ({ wa: WA, products: PRODUCTS } = d);
