@@ -30,7 +30,7 @@ Payment gateway. Akun pelanggan. Pelanggan memilih kurir (kurir ditentukan admin
 - **TOK-11** "Pesan via WhatsApp" membuka `wa.me/<nomor WA toko>` dengan pesan berisi tiap barang, jumlah, subtotal, total, serta baris "Kode pesanan: PSN-XXXXXX" (lihat PSM-1) dan baris "Nama:" dan "Alamat:" untuk diisi pelanggan. Tombol tersembunyi kalau keranjang kosong. — ⬜
 
 **Tampilan (rombak)**
-- **TOK-13** Kepala ringkas (logo kecil di samping "Open Order"). Lebar isi maks 1040px. Tombol keranjang berupa pil di tengah (bukan bilah selebar layar), putih saat kosong, pink saat berisi. Tombol "Tambah" bergaris tepi pink. — ⬜ belum dicek di browser (390 dan desktop)
+- **TOK-13** Kepala ringkas (logo kecil di samping tagline "We make shopping easy"; tanpa judul "Open Order"). Lebar isi maks 1040px. Tombol keranjang berupa pil di tengah (bukan bilah selebar layar), putih saat kosong, pink saat berisi. Tombol "Tambah" bergaris tepi pink. — ⬜ belum dicek di browser (390 dan desktop)
 
 **Urutan (usulan, menunggu persetujuan)**
 - **TOK-14** Pilihan urutan di baris pencarian: "Urutan bawaan" (sesuai data), "Harga tertinggi" (tinggi → rendah), "Harga terendah" (rendah → tinggi). Berlaku bersama pencarian dan filter, dan memuat ulang daftar dari awal (TOK-7). Barang stok habis tetap ikut diurutkan menurut harga. Tidak disimpan antar kunjungan. — 🚫 menunggu persetujuan
@@ -39,9 +39,9 @@ Payment gateway. Akun pelanggan. Pelanggan memilih kurir (kurir ditentukan admin
 - **TOK-12** Tidak ada geser samping di lebar 390. Pencarian menempel di atas saat menggulir. Keranjang dan filter muncul dari bawah. Tombol keranjang memperhitungkan safe-area iPhone. — ✅ dicek di 390 (safe-area ⬜)
 
 **Halaman Keranjang** (draf, menunggu persetujuan; menggantikan jendela keranjang TOK-10)
-- **TOK-13** Keranjang adalah **halaman sendiri** di `/#keranjang` (tetap satu berkas `index.html`, tanpa langkah build). Tombol 🛒 membukanya; tombol Kembali di browser/HP kembali ke katalog. Jendela keranjang lama dihapus. — 🚫
-- **TOK-14** Tiap barang menampilkan foto (atau 🛍️), nama, keterangan, harga satuan, `− n +` (🗑 di jumlah 1, `+` nonaktif di batas stok, "Sisa N" bila stok diatur), dan subtotal barang itu. Perubahan langsung memperbarui total. — 🚫
-- **TOK-15** Ringkasan: jumlah barang (pcs) dan **total (belum termasuk ongkir)**, dengan catatan bahwa ongkir dan kurir ditentukan admin lewat WhatsApp. — 🚫
-- **TOK-16** Nama dan nomor HP penerima (PSM-10) dan tombol **Pesan via WhatsApp** (TOK-11) ada di halaman ini. Di HP, total dan tombol menempel di bawah layar (memperhitungkan safe-area iPhone). — 🚫
-- **TOK-17** Keranjang kosong: tampil "Keranjang masih kosong" dan tombol kembali ke katalog. Tautan "← Lanjut belanja" ada di atas halaman. Isi keranjang tetap disimpan (TOK-9). — 🚫
-- **TOK-18** Tanpa geser samping di lebar 390 dan dibuka langsung lewat alamat `/#keranjang` pun berfungsi (katalog dimuat dulu, lalu halaman keranjang). — 🚫
+- **TOK-15** Keranjang adalah **halaman sendiri** di `/#keranjang` (tetap satu berkas `index.html`, tanpa langkah build). Tombol 🛒 membukanya; tombol Kembali di browser/HP kembali ke katalog. Jendela keranjang lama dihapus. — 🚫
+- **TOK-16** Tiap barang menampilkan foto (atau 🛍️), nama, keterangan, harga satuan, `− n +` (🗑 di jumlah 1, `+` nonaktif di batas stok, "Sisa N" bila stok diatur), dan subtotal barang itu. Perubahan langsung memperbarui total. — 🚫
+- **TOK-17** Ringkasan: jumlah barang (pcs) dan **total (belum termasuk ongkir)**, dengan catatan bahwa ongkir dan kurir ditentukan admin lewat WhatsApp. — 🚫
+- **TOK-18** Nama dan nomor HP penerima (PSM-10) dan tombol **Pesan via WhatsApp** (TOK-11) ada di halaman ini. Di HP, total dan tombol menempel di bawah layar (memperhitungkan safe-area iPhone). — 🚫
+- **TOK-19** Keranjang kosong: tampil "Keranjang masih kosong" dan tombol kembali ke katalog. Tautan "← Lanjut belanja" ada di atas halaman. Isi keranjang tetap disimpan (TOK-9). — 🚫
+- **TOK-20** Tanpa geser samping di lebar 390 dan dibuka langsung lewat alamat `/#keranjang` pun berfungsi (katalog dimuat dulu, lalu halaman keranjang). — 🚫

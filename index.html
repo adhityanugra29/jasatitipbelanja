@@ -12,11 +12,10 @@
   button, label, a { touch-action:manipulation; }
   body { margin:0; font:16px/1.45 "Plus Jakarta Sans",system-ui,sans-serif; color:var(--ink); background:var(--bg); padding:0 16px calc(104px + env(safe-area-inset-bottom)); }
   .wrap { max-width:1040px; margin:0 auto; }
-  h1, h3 { font-family:"Plus Jakarta Sans",sans-serif; }
+  h3 { font-family:"Plus Jakarta Sans",sans-serif; }
   /* kepala ringkas: logo di samping judul, supaya barang cepat terlihat */
   .head { display:flex; align-items:center; gap:14px; margin:0 -16px; padding:14px 16px; background:linear-gradient(180deg,var(--pink-soft),var(--bg)); }
   .head img { height:64px; width:64px; flex:none; padding:3px; border-radius:50%; background:#fff; box-shadow:0 4px 14px #F44D9230; }
-  h1 { margin:0; font-weight:800; font-size:1.7rem; line-height:1.1; letter-spacing:-.02em; }
   .head p { margin:2px 0 0; font-size:.85rem; font-weight:600; color:var(--teal-d); }
   .notice { background:var(--teal-soft); color:var(--teal-d); border-radius:14px; padding:12px 14px; text-align:center; font-weight:700; margin:8px 0 12px; }
   .tools { display:flex; align-items:center; gap:8px; position:sticky; top:0; z-index:5; background:var(--bg); padding:10px 0; } /* pencarian tetap terlihat saat menggulir */
@@ -56,7 +55,11 @@
   #pager { text-align:center; margin:20px 0 0; font-weight:700; opacity:.6; }
   .empty { padding:24px; text-align:center; grid-column:1/-1; }
   #fab { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom)); width:min(440px,calc(100% - 24px)); padding:15px; border:0; border-radius:99px; background:linear-gradient(90deg,var(--pink-d),var(--pink)); color:#fff; font:inherit; font-size:1rem; font-weight:700; box-shadow:0 8px 24px #D32F8260; cursor:pointer; }
-  #fab.empty { display:flex; align-items:center; gap:12px; padding:8px 20px 8px 8px; background:var(--pink-soft); color:var(--ink); border:1.5px solid #fff; box-shadow:0 6px 20px #0E3B431F; text-align:left; }
+  #fab { display:flex; align-items:center; gap:12px; padding:8px 8px 8px 8px; text-align:left; }
+  #fab .tot { margin-left:auto; padding:0 14px; font-size:1.05rem; white-space:nowrap; }
+  #fab:not(.empty) .eic { background:#ffffff2e; color:#fff; box-shadow:none; position:relative; }
+  #fab .n { position:absolute; top:-4px; right:-4px; min-width:20px; height:20px; padding:0 4px; box-sizing:border-box; border-radius:99px; background:#fff; color:var(--pink-d); font-size:.75rem; display:grid; place-items:center; }
+  #fab.empty { padding-right:20px; background:var(--pink-soft); color:var(--ink); border:1.5px solid #fff; box-shadow:0 6px 20px #0E3B431F; }
   #fab .eic { flex:none; width:44px; height:44px; border-radius:50%; background:#fff; color:var(--pink-d); display:grid; place-items:center; box-shadow:0 2px 8px #D32F8230; }
   #fab .eic svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
   #fab .et { display:flex; flex-direction:column; line-height:1.25; }
@@ -78,7 +81,6 @@
   @media (max-width:600px) {
     body { padding-left:12px; padding-right:12px; }
     .head { margin:0 -12px; padding:12px; }
-    h1 { font-size:1.45rem; }
     [data-cols="3"] { display:none; } /* 3 kolom terlalu sempit di HP */
     .grid { gap:12px; }
     /* jendela keranjang & filter muncul dari bawah, mudah dijangkau ibu jari */
@@ -90,7 +92,7 @@
 <div class="wrap">
   <div class="head">
     <img src="/assets/logo.png" alt="Jasa Titip Belanja">
-    <div><h1>Open Order</h1><p>We make shopping easy</p></div>
+    <div><p>We make shopping easy</p></div>
   </div>
   <div class="notice" id="notice" hidden></div>
 
@@ -207,8 +209,10 @@ function renderCart() {
   const count = rows.reduce((s, p) => s + cart[p.id], 0);
   const total = rows.reduce((s, p) => s + cart[p.id] * p.price, 0);
   $("fab").classList.toggle("empty", !count);
-  $("fab").innerHTML = count ? `🛒 Lihat Keranjang (${count}) · ${rp(total)}`
-    : `<span class="eic"><svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 8H6"/></svg></span><span class="et">Keranjang masih kosong<small>Ketuk + pada barang untuk mulai belanja</small></span>`;
+  const cartIc = `<svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 8H6"/></svg>`;
+  $("fab").innerHTML = count
+    ? `<span class="eic">${cartIc}<span class="n">${count}</span></span><span class="et">Lihat Keranjang<small>Belum termasuk ongkir</small></span><b class="tot">${rp(total)}</b>`
+    : `<span class="eic">${cartIc}</span><span class="et">Keranjang masih kosong<small>Ketuk + pada barang untuk mulai belanja</small></span>`;
   $("items").innerHTML = rows.map(p => `
     <div class="row"><span>${esc(p.name)}<br><small>${rp(p.price)}</small></span>
       <button data-dec="${esc(p.id)}" aria-label="${cart[p.id] === 1 ? "Hapus dari keranjang" : "Kurangi"}">${cart[p.id] === 1 ? "🗑" : "−"}</button><b>${cart[p.id]}</b><button data-inc="${esc(p.id)}" ${cart[p.id] >= max(p) ? "disabled" : ""}>+</button></div>`).join("")
