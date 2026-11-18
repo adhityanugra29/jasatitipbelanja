@@ -17,7 +17,7 @@ Payment gateway. Akun pelanggan. Pelanggan memilih kurir (kurir ditentukan admin
 - **TOK-4** Semua teks dari data di-escape (tidak ada HTML yang lolos). — ⬜
 
 **Cari, filter, daftar**
-- **TOK-5** Pencarian memeriksa nama dan keterangan. Di bawah kolom pencarian ada dua dropdown yang selalu terlihat (tanpa tombol filter): **Urutan** (paling kiri, TOK-14) dan **Kategori**. Kategori bisa **dipilih lebih dari satu** (kotak centang); tulisannya: "Semua kategori" bila kosong, nama kategori bila 1–2, "N kategori" bila lebih. Ada tombol "Hapus pilihan" bila ada yang terpilih. Daftar langsung tersaring saat dicentang; menu menutup saat mengetuk di luarnya. — ⬜ dirombak, belum dicek di browser
+- **TOK-5** Pencarian memeriksa nama dan keterangan. Di bawah kolom pencarian ada **satu baris chip kecil** yang selalu terlihat (tanpa dropdown/pop-up; di HP bisa digeser ke samping): dua chip urutan (TOK-14), pemisah, chip **Semua**, lalu satu chip per kategori. Kategori bisa **dipilih lebih dari satu** (ketuk untuk memilih/melepas); **Semua** aktif bila tidak ada yang dipilih dan menghapus pilihan. Daftar langsung tersaring. — ✅ diuji di Chrome (CDP, 390) dengan server demo: multi-pilih, melepas, Semua, tersaring, tanpa geser samping; baris chip bisa digulir ke samping bila kategori banyak (chip terakhir terpotong di tepi, memang digulir)
 - **TOK-6** Pilihan tampilan 1/2/3 kolom, satu baris dengan pencarian dan filter. Bawaan 2 kolom; di layar >900px bawaan 3 kolom. Di layar ≤600px pilihan 3 kolom disembunyikan. — ⬜ dirombak, belum dicek ulang di browser
 - **TOK-7** Daftar bertambah sendiri ke bawah saat digulir: 12 barang per muat, tanpa tombol halaman. Mencari atau mengubah filter mengembalikan ke awal. — ⬜
 
@@ -33,7 +33,7 @@ Payment gateway. Akun pelanggan. Pelanggan memilih kurir (kurir ditentukan admin
 - **TOK-13** Kepala ringkas (logo kecil di samping tagline "We make shopping easy"; tanpa judul "Open Order"). Lebar isi maks 1040px. Tombol keranjang berupa pil di tengah (bukan bilah selebar layar), putih saat kosong, pink saat berisi. Tombol "Tambah" bergaris tepi pink. — ⬜ belum dicek di browser (390 dan desktop)
 
 **Urutan**
-- **TOK-14** Dropdown **Urutan** di paling kiri, tanpa opsi "bawaan": **Harga tertinggi** (tinggi → rendah, **pilihan awal**) dan **Harga terendah** (rendah → tinggi). Berlaku bersama pencarian dan kategori, dan memuat ulang daftar dari awal (TOK-7). Barang stok habis tetap ikut diurutkan menurut harga. Tidak disimpan antar kunjungan (setiap kunjungan mulai dari Harga tertinggi). — ⬜ belum diuji
+- **TOK-14** Dua chip **Urutan** (↓ Harga tertinggi, ↑ Harga terendah; satu selalu aktif) di paling kiri baris chip, tanpa opsi "bawaan": **Harga tertinggi** (tinggi → rendah, **pilihan awal**) dan **Harga terendah** (rendah → tinggi). Berlaku bersama pencarian dan kategori, dan memuat ulang daftar dari awal (TOK-7). Barang stok habis tetap ikut diurutkan menurut harga. Tidak disimpan antar kunjungan (setiap kunjungan mulai dari Harga tertinggi).  — ✅ diuji di Chrome (CDP, 390): awal Harga tertinggi, ganti ke Harga terendah, urutan tetap saat kategori berubah
 
 **Halaman Keranjang** (menggantikan jendela keranjang TOK-10)
 - **TOK-15** Keranjang adalah **halaman sendiri** di `/#keranjang` (tetap satu berkas `index.html`, tanpa langkah build). Tombol 🛒 membukanya; tombol Kembali di browser/HP kembali ke katalog. Jendela keranjang lama dihapus. — ✅ diuji di Chrome (CDP) lebar 390 dan 1280 dengan server demo; tombol Kembali bawaan browser ⬜
