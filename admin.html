@@ -47,6 +47,7 @@
   .two { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   button.b { padding:12px 16px; font:inherit; border:0; border-radius:10px; background:var(--teal-soft); color:var(--ink); font-weight:700; cursor:pointer; }
   button.b.dark { background:var(--pink-d); color:#fff; }
+  button.b.teal { background:var(--teal-d); color:#fff; } /* Cetak Label: beda warna dari Atur kurir & jadwal (KIR-4) */
   .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px; }
   .pc { background:#fff; border:1.5px solid #F3D5E3; border-radius:12px; padding:12px; display:flex; flex-direction:column; box-shadow:0 4px 14px #0E3B4314; }
   .pc img, .pc .ph { width:100%; height:auto; aspect-ratio:1; border-radius:8px; margin-bottom:8px; font-size:2.5rem; object-fit:cover; }
@@ -184,7 +185,7 @@
   .pls .shi { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:.95rem; }
   .pls .rs { display:inline; font-size:.8rem; letter-spacing:0; font-weight:400; color:inherit; opacity:.65; }
   .plf { margin-top:12px; padding-top:12px; border-top:1px solid var(--line); }
-  .plf .b.dark { flex:1; }
+  .plf .b.dark, .plf .b.teal { flex:1; }
   #oq, #om, #ok { background:#fff; border:1.5px solid var(--line); border-radius:12px; padding:12px 14px; margin:0; }
   .plc a.wa { flex:none; display:grid; place-items:center; width:44px; height:44px; padding:0; border:0; border-radius:50%; background:#25D366; }
   .plc a.wa svg { width:24px; height:24px; fill:#fff; }
@@ -1139,8 +1140,8 @@ function statusOf(o) {
   return d === 0 ? { k: "today", t: "Hari ini", rank: 1 } : { k: "sched", t: "Terjadwal " + dfmt(o.shipDate), rank: 2 };
 }
 
-// KIR-4: Cetak Label baru tampil setelah kurir + jadwal diisi (pesanan yang sudah dikirim cukup kurirnya)
-const labelReady = o => !!o.courier && !!(o.shipDate || o.shipped);
+// KIR-4: Cetak Label baru tampil setelah kurir, jadwal, dan resi diisi (pesanan yang sudah dikirim dianggap lengkap)
+const labelReady = o => !!o.courier && !!o.resi && !!(o.shipDate || o.shipped);
 function renderOrders() {
   const all = orders.filter(o => o.paidAt), todo = all.filter(o => !o.shipped), done = all.filter(o => o.shipped);
   $("ocount").textContent = todo.length;
@@ -1154,7 +1155,7 @@ function renderOrders() {
   const list = (oTab === "todo" ? todo : done)
     .filter(o => (!q || [o.customer, o.invoice, o.city, o.resi].join(" ").toLowerCase().includes(q)) && (!m || mon(o) === m) && (!c || o.courier === c))
     .sort((a, b) => oTab === "done" ? b.shipped.localeCompare(a.shipped)
-      : statusOf(a).rank - statusOf(b).rank || (a.shipDate || a.paidAt).localeCompare(b.shipDate || b.paidAt));
+      : (labelReady(b) - labelReady(a)) || statusOf(a).rank - statusOf(b).rank || (a.shipDate || a.paidAt).localeCompare(b.shipDate || b.paidAt)); // KIR-2: siap cetak label paling atas
   oPage = clampPage(oPage, list.length);
   const btn = (a, o, label, cls = "sm") => `<button class="b ${cls}" data-oa="${a}" data-oid="${esc(o.id)}">${label}</button>`;
   $("otable").innerHTML = list.length ? list.slice((oPage - 1) * PER, oPage * PER).map(o => { const st = statusOf(o); return `<div class="plc">
@@ -1165,7 +1166,7 @@ function renderOrders() {
         <div><small>KURIR</small><b>${o.courier ? esc(o.courier) : `<span class="mut">Belum dipilih</span>`}</b>${o.resi ? `<br><small class="rs">Resi ${esc(o.resi)}</small>` : ""}</div>
         <div><small>JADWAL KIRIM</small><b>${dfmt(o.shipDate)}</b></div>
         <div><small>DIBAYAR</small><span class="pay lunas">LUNAS</span> <small class="rs">${dfmt(o.paidAt)}</small></div></div>
-      <div class="oact plf">${labelReady(o) ? btn("label", o, "Cetak Label", "dark") : btn("set", o, "Atur kurir &amp; jadwal", "dark")}${dots("ship", o)}</div></div>`; }).join("")
+      <div class="oact plf">${labelReady(o) ? btn("label", o, "Cetak Label", "teal") : btn("set", o, "Atur kurir &amp; jadwal", "dark")}${dots("ship", o)}</div></div>`; }).join("")
     : `<p style="padding:24px;text-align:center">${all.length ? "Tidak ada pesanan yang cocok." : "Belum ada pesanan siap kirim. Pesanan masuk otomatis setelah invoice dibayar."}</p>`;
   $("otable").insertAdjacentHTML("beforeend", pagerHtml("ship", oPage, list.length));
 }
@@ -1206,7 +1207,9 @@ async function invAction(a, o) {
   await saveOrders();
 }
 // label pengiriman: nomor HP dan isi barang disamarkan, jumlah barang tampil, harga tidak ditampilkan
+let labelOrder = null; // pesanan yang labelnya sedang dilihat (KIR-12)
 function openLabel(o) {
+  labelOrder = o;
   const items = o.items, total = items.reduce((s, i) => s + i.qty, 0);
   $("label").innerHTML = `
     <div class="lh"><img src="/assets/logo.png" alt=""><div><b>LABEL PENGIRIMAN</b><br><span>${esc(o.invoice)}</span></div></div>
@@ -1217,12 +1220,19 @@ function openLabel(o) {
       <tr class="lt"><td>Total</td><td>${total} pcs</td></tr></table></div>`;
   $("ldlg").showModal();
 }
-$("lprint").onclick = () => window.print();
+// KIR-12: menekan cetak pada pesanan yang belum dikirim = dianggap terkirim hari ini (kurir dan resi sudah ada, API-4c)
+$("lprint").onclick = async () => {
+  window.print();
+  const o = labelOrder;
+  if (!o || o.shipped || !o.paidAt || !o.courier || !o.resi) return;
+  o.shipped = today(); $("ldlg").close(); await saveOrders();
+  say(`✅ Label ${o.invoice} dicetak, pesanan dianggap sudah dikirim. Batal kirim ada di menu ⋮ tab Sudah Dikirim.`);
+};
 $("lclose").onclick = () => $("ldlg").close();
 
 async function shipAction(a, o) {
   if (a === "view") return openInvoiceView(o);
-  if (a === "label") { if (!o.courier) { say("Isi kurir dulu agar tertulis di label.", true); return openShip(o); } return openLabel(o); }
+  if (a === "label") { if (!labelReady(o)) { say("Isi kurir, jadwal, dan nomor resi dulu.", true); return openShip(o); } return openLabel(o); }
   if (a === "ship" || a === "set") return openShip(o);
   if (a === "unship") { o.shipped = ""; await saveOrders(); }
 }
