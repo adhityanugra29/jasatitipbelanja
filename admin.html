@@ -106,6 +106,14 @@
   .otabs button { background:none; border:0; border-bottom:3px solid transparent; padding:10px 2px; font:inherit; font-weight:700; color:#5E8388; cursor:pointer; }
   .otabs button.on { color:var(--ink); border-color:var(--pink); }
   .otabs span { background:#FDEBF3; border-radius:99px; padding:1px 8px; font-size:.8rem; margin-left:4px; }
+  /* Pengaturan: garis tipis dan lembut, sama dengan kartu Katalog dan toko */
+  #v-pengaturan .box { border:1.5px solid var(--line); border-radius:16px; box-shadow:0 4px 14px #0E3B4314; padding:18px; }
+  #v-pengaturan input, #v-pengaturan textarea { border:1.5px solid var(--line); border-radius:12px; padding:11px 14px; }
+  #v-pengaturan input:focus, #v-pengaturan textarea:focus { outline:0; border-color:var(--pink); box-shadow:0 0 0 4px #F44D9222; }
+  #v-pengaturan .sadd { border-radius:14px; }
+  #v-pengaturan .sadd input { border-color:#F4C7DC; }
+  #v-pengaturan .srow .dots { border:1.5px solid var(--line); border-radius:12px; }
+  #v-pengaturan .srow .dots.del { border-color:#F3B8B8; }
   /* sama dengan pencarian + filter di toko (index.html) */
   .ktools { margin-bottom:14px; }
   .ksearch { display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid var(--line); border-radius:99px; padding:0 18px; color:var(--pink-d); box-shadow:0 2px 10px #0E3B430D; margin:0; }
