@@ -293,7 +293,10 @@
   .srow small { flex:none; opacity:.65; white-space:nowrap; }
   .srow .dots { flex:none; width:40px; height:40px; }
   .srow .dots.del { color:#c00; }
-  .srow.off input { opacity:.5; }
+  .srow .grip { flex:none; width:32px; height:40px; border:0; background:none; font-size:1.3rem; color:#5E8388; cursor:grab; touch-action:none; user-select:none; }
+  .srow { transition:transform .15s; background:#fff; }
+  .srow.drag { transition:none; position:relative; z-index:2; box-shadow:0 6px 18px #0E3B4333; border-radius:12px; }
+  .srow.drag .grip { cursor:grabbing; }
   .sadd { display:flex; gap:8px; margin-top:8px; }
   .sadd input { margin:0; flex:1; }
   .sadd .b { padding:10px 16px; }
@@ -483,7 +486,7 @@
         <div class="sadd"><input id="cat-new" placeholder="Kategori baru" maxlength="40"><button type="button" class="b" id="cat-add">+ Tambah</button></div>
       </div>
       <div class="box" data-sp="kurir" hidden>
-        <small>Kurir aktif muncul sebagai pilihan di halaman Pengiriman. Nama kurir tetap boleh diketik bebas di sana. Pesanan lama tidak berubah.</small>
+        <small>Kurir di daftar ini jadi pilihan di halaman Pengiriman (nama tetap boleh diketik bebas di sana). Seret ⠿ untuk mengatur urutan. Pesanan lama tidak berubah.</small>
         <div class="rows" id="cour-rows"></div>
         <div class="sadd"><input id="cour-new" placeholder="Kurir baru" maxlength="40"><button type="button" class="b" id="cour-add">+ Tambah</button></div>
       </div>
@@ -735,34 +738,49 @@ const usedBy = c => data.products.filter(p => p.cat === c).length;
 const fillCfg = () => {
   CFG.forEach(k => { $("cfg-" + k).value = settings[k] || ""; });
   catRows = (data.cats?.length ? data.cats : [...new Set(data.products.map(p => p.cat).filter(Boolean))]).map(c => ({ orig: c, name: c }));
-  courRows = (settings.couriers || []).map(c => ({ ...c }));
+  courRows = (settings.couriers || []).map(c => ({ name: c.name }));
   renderCfgRows();
 };
-const courDatalist = () => { $("couriers").innerHTML = (settings.couriers || []).filter(c => c.on).map(c => `<option value="${esc(c.name)}">`).join(""); };
+const courDatalist = () => { $("couriers").innerHTML = (settings.couriers || []).map(c => `<option value="${esc(c.name)}">`).join(""); };
 function renderCfgRows() {
-  const row = (i, r, kind, extra, canDel) => `<div class="srow${r.on === false ? " off" : ""}"><input value="${esc(r.name)}" data-k="${kind}" data-i="${i}" maxlength="40" aria-label="Nama">${extra}
-    <button type="button" class="dots" data-mv="${kind}:${i}:-1" aria-label="Naik"${i === 0 ? " disabled" : ""}>↑</button><button type="button" class="dots" data-mv="${kind}:${i}:1" aria-label="Turun">↓</button>
+  const row = (i, r, kind, extra, canDel) => `<div class="srow" data-i="${i}"><button type="button" class="grip" data-grip="${kind}" aria-label="Seret untuk mengatur urutan">⠿</button><input value="${esc(r.name)}" data-k="${kind}" data-i="${i}" maxlength="40" aria-label="Nama">${extra}
     ${canDel}</div>`;
   $("cat-rows").innerHTML = catRows.map((r, i) => row(i, r, "cat", r.orig ? `<small>${usedBy(r.orig)} barang</small>` : "", `<button type="button" class="dots del" data-rm="cat:${i}" aria-label="Hapus">🗑</button>`)).join("") || "<p>Belum ada kategori.</p>";
-  $("cour-rows").innerHTML = courRows.map((r, i) => row(i, r, "cour", `<button type="button" class="tgl${r.on ? " on" : ""}" data-tg="${i}">${r.on ? "Aktif" : "Nonaktif"}</button>`, `<button type="button" class="dots del" data-rm="cour:${i}" aria-label="Hapus">🗑</button>`)).join("") || "<p>Belum ada kurir.</p>";
+  $("cour-rows").innerHTML = courRows.map((r, i) => row(i, r, "cour", "", `<button type="button" class="dots del" data-rm="cour:${i}" aria-label="Hapus">🗑</button>`)).join("") || "<p>Belum ada kurir.</p>";
 }
 document.querySelector('[data-sp="kategori"]').parentElement.addEventListener("input", e => {
   const t = e.target, r = t.dataset.k === "cat" ? catRows[t.dataset.i] : t.dataset.k === "cour" ? courRows[t.dataset.i] : null;
   if (r) r.name = t.value;
 });
+// seret-dan-lepas urutan (SET-6/8): pointer events supaya jalan di HP; baris digeser lewat transform, urutan baru ditulis saat dilepas
+document.querySelector('[data-sp="kategori"]').parentElement.addEventListener("pointerdown", e => {
+  const g = e.target.closest(".grip"); if (!g) return;
+  const row = g.closest(".srow"), rows = [...row.parentElement.children], from = +row.dataset.i, l = g.dataset.grip === "cat" ? catRows : courRows;
+  const mids = rows.map(r => { const b = r.getBoundingClientRect(); return b.top + b.height / 2; }), h = rows[1] ? rows[1].getBoundingClientRect().top - rows[0].getBoundingClientRect().top : 0, y0 = e.clientY;
+  let to = from; row.classList.add("drag");
+  const move = ev => {
+    const dy = ev.clientY - y0; row.style.transform = `translateY(${dy}px)`;
+    to = mids.filter((m, k) => k !== from && m < mids[from] + dy).length; // jumlah baris lain yang berada di atas posisi baris yang diseret
+    rows.forEach((r, k) => { if (k !== from) r.style.transform = from < to && k > from && k <= to ? `translateY(${-h}px)` : from > to && k >= to && k < from ? `translateY(${h}px)` : ""; });
+  };
+  const up = () => {
+    document.removeEventListener("pointermove", move); document.removeEventListener("pointerup", up); document.removeEventListener("pointercancel", up);
+    if (to !== from) l.splice(to, 0, l.splice(from, 1)[0]);
+    renderCfgRows();
+  };
+  document.addEventListener("pointermove", move); document.addEventListener("pointerup", up); document.addEventListener("pointercancel", up);
+});
 document.querySelector('[data-sp="kategori"]').parentElement.addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
   const list = k => k === "cat" ? catRows : courRows, dup = (l, n, skip) => l.some((x, i) => i !== skip && x.name.trim().toLowerCase() === n.toLowerCase());
-  if (b.dataset.mv) { const [k, i, d] = b.dataset.mv.split(":"), l = list(k), j = +i + +d; if (j >= 0 && j < l.length) { [l[i], l[j]] = [l[j], l[i]]; renderCfgRows(); } }
-  else if (b.dataset.rm) {
+  if (b.dataset.rm) {
     const [k, i] = b.dataset.rm.split(":"), l = list(k), r = l[i];
     if (k === "cat" && r.orig && usedBy(r.orig)) return say(`Kategori "${r.orig}" masih dipakai ${usedBy(r.orig)} barang. Pindahkan barangnya dulu.`, true);
     l.splice(i, 1); renderCfgRows();
-  } else if (b.dataset.tg) { courRows[b.dataset.tg].on = !courRows[b.dataset.tg].on; renderCfgRows(); }
-  else if (b.id === "cat-add" || b.id === "cour-add") {
+  } else if (b.id === "cat-add" || b.id === "cour-add") {
     const k = b.id === "cat-add" ? "cat" : "cour", inp = $(k + "-new"), n = inp.value.trim(), l = list(k);
     if (!n) return; if (dup(l, n, -1)) return say("Nama itu sudah ada.", true);
-    l.push(k === "cat" ? { orig: "", name: n } : { name: n, on: true }); inp.value = ""; renderCfgRows();
+    l.push(k === "cat" ? { orig: "", name: n } : { name: n }); inp.value = ""; renderCfgRows();
   }
 });
 $("save").onclick = async () => { // hanya di halaman Pengaturan
@@ -773,7 +791,7 @@ $("save").onclick = async () => { // hanya di halaman Pengaturan
   // ubah nama kategori ikut mengubah barangnya (SET-7)
   catRows.forEach(r => { const n = r.name.trim(); if (r.orig && r.orig !== n) data.products.forEach(p => { if (p.cat === r.orig) p.cat = n; }); r.orig = n; r.name = n; });
   data.cats = catRows.map(r => r.name);
-  settings = { ...settings, ...Object.fromEntries(CFG.map(k => [k, $("cfg-" + k).value.trim()])), couriers: courRows.map(c => ({ name: c.name.trim(), on: c.on })) }; // rekening tetap dari server
+  settings = { ...settings, ...Object.fromEntries(CFG.map(k => [k, $("cfg-" + k).value.trim()])), couriers: courRows.map(c => ({ name: c.name.trim(), on: true })) }; // rekening tetap dari server
   try { await api("PUT", "/api/settings", settings); } catch (err) { return say(err.message, true); }
   courDatalist();
   if (await saveCatalog("✅ Pengaturan tersimpan.")) render();
