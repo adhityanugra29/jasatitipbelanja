@@ -106,6 +106,15 @@
   .otabs button { background:none; border:0; border-bottom:3px solid transparent; padding:10px 2px; font:inherit; font-weight:700; color:#5E8388; cursor:pointer; }
   .otabs button.on { color:var(--ink); border-color:var(--pink); }
   .otabs span { background:#FDEBF3; border-radius:99px; padding:1px 8px; font-size:.8rem; margin-left:4px; }
+  /* sama dengan pencarian + filter di toko (index.html) */
+  .ktools { margin-bottom:14px; }
+  .ksearch { display:flex; align-items:center; gap:10px; background:#fff; border:1.5px solid var(--line); border-radius:99px; padding:0 18px; color:var(--pink-d); box-shadow:0 2px 10px #0E3B430D; margin:0; }
+  .ksearch:focus-within { border-color:var(--pink); box-shadow:0 0 0 4px #F44D9222; }
+  .ksearch input { flex:1; min-width:0; margin:0; padding:14px 0; font:inherit; font-weight:500; color:var(--ink); border:0 !important; outline:0; background:none; box-shadow:none; }
+  .ksearch input::-webkit-search-cancel-button { cursor:pointer; }
+  .kfil { display:flex; gap:8px; padding-top:10px; }
+  .kfil select { flex:0 1 auto; min-width:0; margin:0; padding:9px 34px 9px 16px; font:inherit; font-size:.92rem; font-weight:600; color:var(--ink); background:#fff url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%277%27 fill=%27none%27 stroke=%27%23D32F82%27 stroke-width=%272%27 stroke-linecap=%27round%27%3E%3Cpath d=%27M1 1l5 5 5-5%27/%3E%3C/svg%3E") no-repeat right 13px center; border:1.5px solid var(--line); border-radius:99px; appearance:none; -webkit-appearance:none; cursor:pointer; box-shadow:0 2px 10px #0E3B430D; }
+  @media (max-width:800px) { .kfil select { flex:1; font-size:16px; } }
   .ofil { display:grid; grid-template-columns:1fr auto auto auto; gap:10px; margin-bottom:14px; }
   .ofil input, .ofil select { margin:0; }
   .otable { background:#fff; border-radius:14px; overflow-x:auto; box-shadow:0 4px 14px #0E3B4314; }
@@ -303,9 +312,13 @@
   .srow { transition:transform .15s; background:#fff; }
   .srow.drag { transition:none; position:relative; z-index:2; box-shadow:0 6px 18px #0E3B4333; border-radius:12px; }
   .srow.drag .grip { cursor:grabbing; }
-  .sadd { display:flex; gap:8px; margin-top:8px; }
-  .sadd input { margin:0; flex:1; }
-  .sadd .b { padding:10px 16px; }
+  .sadd { background:#FDEBF3; border-radius:12px; padding:12px; margin-bottom:16px; }
+  .sadd label { display:block; font-weight:700; margin:0 0 6px; }
+  .sadd > div { display:flex; gap:8px; }
+  .sadd input { margin:0; flex:1; min-width:0; background:#fff; }
+  .sadd .b { padding:10px 16px; white-space:nowrap; }
+  .shd { margin:0 0 4px; font-size:1.05rem; }
+  .shd small { font-weight:400; color:#5E8388; font-size:.8rem; margin-left:6px; }
   .tgl { flex:none; padding:8px 12px; border:1.5px solid var(--line); border-radius:99px; background:#fff; font:inherit; font-size:.8rem; font-weight:700; color:#5E8388; cursor:pointer; }
   .tgl.on { background:var(--teal-soft); border-color:var(--teal); color:var(--teal-d); }
   textarea { width:100%; padding:10px; font:inherit; color:var(--ink); border:1.5px solid var(--line); border-radius:12px; margin:4px 0 8px; background:#fff; resize:vertical; }
@@ -436,8 +449,11 @@
   <main id="main">
     <section id="v-katalog">
       <div class="pagehead"><h2>Katalog</h2><button class="b dark" id="add">+ Tambah Barang</button></div>
-      <div class="ofil"><input id="k-q" placeholder="Cari nama, keterangan, kategori"><select id="k-c"></select>
-        <select id="k-s"><option value="">Semua stok</option><option value="ada">Tersedia</option><option value="habis">Stok habis</option><option value="terbatas">Stok terbatas</option></select></div>
+      <div class="ktools"><label class="ksearch">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+        <input type="search" id="k-q" placeholder="Cari nama, keterangan, kategori"></label>
+        <div class="kfil"><select id="k-c" aria-label="Kategori"></select>
+        <select id="k-s" aria-label="Stok"><option value="">Semua stok</option><option value="ada">Tersedia</option><option value="habis">Stok habis</option><option value="terbatas">Stok terbatas</option></select></div></div>
       <div id="list"></div>
     </section>
     <section id="v-bulk" hidden>
@@ -487,14 +503,16 @@
         <button data-stab="invoice">Invoice</button>
       </div>
       <div class="box" data-sp="kategori" hidden>
+        <div class="sadd"><label for="cat-new">Tambah kategori baru</label><div><input id="cat-new" placeholder="Contoh: Aksesoris" maxlength="40"><button type="button" class="b dark" id="cat-add">+ Tambah</button></div></div>
+        <h3 class="shd">Daftar kategori <small>seret ⠿ untuk mengatur urutan</small></h3>
         <small>Urutan di sini dipakai di filter toko dan pilihan kategori barang. Mengubah nama ikut mengubah semua barangnya. Kategori yang masih dipakai barang tidak bisa dihapus.</small>
         <div class="rows" id="cat-rows"></div>
-        <div class="sadd"><input id="cat-new" placeholder="Kategori baru" maxlength="40"><button type="button" class="b" id="cat-add">+ Tambah</button></div>
       </div>
       <div class="box" data-sp="kurir" hidden>
-        <small>Kurir di daftar ini jadi pilihan di halaman Pengiriman (nama tetap boleh diketik bebas di sana). Seret ⠿ untuk mengatur urutan. Pesanan lama tidak berubah.</small>
+        <div class="sadd"><label for="cour-new">Tambah kurir baru</label><div><input id="cour-new" placeholder="Contoh: Ninja Xpress" maxlength="40"><button type="button" class="b dark" id="cour-add">+ Tambah</button></div></div>
+        <h3 class="shd">Daftar kurir <small>seret ⠿ untuk mengatur urutan</small></h3>
+        <small>Kurir di daftar ini jadi pilihan di halaman Pengiriman (nama tetap boleh diketik bebas di sana). Pesanan lama tidak berubah.</small>
         <div class="rows" id="cour-rows"></div>
-        <div class="sadd"><input id="cour-new" placeholder="Kurir baru" maxlength="40"><button type="button" class="b" id="cour-add">+ Tambah</button></div>
       </div>
       <div class="box" data-sp="toko">
         <label>Nomor WhatsApp toko (contoh 6281234567890)</label><input id="wa" inputmode="numeric">
@@ -760,9 +778,12 @@ const courDatalist = () => { $("couriers").innerHTML = (settings.couriers || [])
 function renderCfgRows() {
   const row = (i, r, kind, extra, canDel) => `<div class="srow" data-i="${i}"><button type="button" class="grip" data-grip="${kind}" aria-label="Seret untuk mengatur urutan">⠿</button><input value="${esc(r.name)}" data-k="${kind}" data-i="${i}" maxlength="40" aria-label="Nama">${extra}
     ${canDel}</div>`;
-  $("cat-rows").innerHTML = catRows.map((r, i) => row(i, r, "cat", r.orig ? `<small>${usedBy(r.orig)} barang</small>` : "", `<button type="button" class="dots del" data-rm="cat:${i}" aria-label="Hapus">🗑</button>`)).join("") || "<p>Belum ada kategori.</p>";
+  $("cat-rows").innerHTML = catRows.map((r, i) => row(i, r, "cat", "", `<button type="button" class="dots del" data-rm="cat:${i}" aria-label="Hapus">🗑</button>`)).join("") || "<p>Belum ada kategori.</p>";
   $("cour-rows").innerHTML = courRows.map((r, i) => row(i, r, "cour", "", `<button type="button" class="dots del" data-rm="cour:${i}" aria-label="Hapus">🗑</button>`)).join("") || "<p>Belum ada kurir.</p>";
 }
+document.querySelector('[data-sp="kategori"]').parentElement.addEventListener("keydown", e => { // Enter di kolom "baru" = tombol Tambah
+  if (e.key === "Enter" && /^(cat|cour)-new$/.test(e.target.id)) { e.preventDefault(); $(e.target.id.replace("new", "add")).click(); }
+});
 document.querySelector('[data-sp="kategori"]').parentElement.addEventListener("input", e => {
   const t = e.target, r = t.dataset.k === "cat" ? catRows[t.dataset.i] : t.dataset.k === "cour" ? courRows[t.dataset.i] : null;
   if (r) r.name = t.value;
