@@ -48,6 +48,7 @@ Berkas: yang diubah/dibuat
 | [07-pelanggan.md](07-pelanggan.md) | Menu Pelanggan di admin |
 | [08-pesanan-masuk.md](08-pesanan-masuk.md) | Pesanan tercatat saat tombol WhatsApp ditekan, dicocokkan dengan invoice |
 | [09-paginasi-admin.md](09-paginasi-admin.md) | Halaman bernomor (10 per halaman) di daftar admin |
+| [10-performa.md](10-performa.md) | Cache, gzip, foto mini, satu dokumen per barang/invoice, agar tetap cepat saat besar |
 | [keputusan.md](keputusan.md) | Catatan keputusan dan daftar yang masih terbuka |
 
 Tema tampilan (berlaku untuk toko dan admin): palet dari logo: pink `#F44D92` (tombol: `#D32F82`), tosca `#0BBDB6`, teks `#0E3B43`, latar `#FFF8FB`. Font judul Josefin Sans, teks Nunito.

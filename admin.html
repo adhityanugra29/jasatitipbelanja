@@ -417,7 +417,7 @@
 <body>
 <div id="loading" hidden role="status" aria-live="polite"><i></i><p>Sedang masuk…</p></div>
 <div id="login">
-  <img src="/assets/logo.png" alt="Jasa Titip Belanja">
+  <img src="/assets/logo-s.png" alt="Jasa Titip Belanja">
   <h1>Admin Toko</h1>
   <div class="box" style="text-align:left">
     <label>Password admin</label>
@@ -428,10 +428,10 @@
 </div>
 
 <div id="app" hidden>
-  <div id="topbar"><button id="menu" aria-label="Menu">☰</button><img src="/assets/logo.png" alt=""></div>
+  <div id="topbar"><button id="menu" aria-label="Menu">☰</button><img src="/assets/logo-s.png" alt=""></div>
 
   <aside id="side">
-    <img class="logo" src="/assets/logo.png" alt="Jasa Titip Belanja">
+    <img class="logo" src="/assets/logo-s.png" alt="Jasa Titip Belanja">
     <div class="grp">JUALAN</div>
     <button class="nav" data-view="pesanan">
       <svg viewBox="0 0 24 24"><path d="M3 5h18v11H8l-5 4zM8 9h8M8 12h5"/></svg>Pesanan Masuk <span class="tag" id="pcount"></span></button>
@@ -623,7 +623,7 @@ function render() {
   page = clampPage(page, list.length, PER_KAT);
   $("list").innerHTML = `<div class="cards">` + list.slice((page - 1) * PER_KAT, page * PER_KAT).map(([p, gi]) => { return `
     <div class="pc">
-      ${p.img ? `<img src="${esc(p.img)}" alt="">` : `<div class="ph">🛍️</div>`}
+      ${p.img ? `<img src="${esc(p.thumb || p.img)}" alt="" loading="lazy" decoding="async">` : `<div class="ph">🛍️</div>`}
       <h3>${esc(p.name || "(tanpa nama)")}</h3>${p.badge ? `<span class="chip bdg ${p.badge}">${BADGE_LABEL[p.badge]}</span>` : ""}
       <div class="sub">${esc(p.desc || p.cat)}</div>
       <div class="price">Rp${(p.price || 0).toLocaleString("id-ID")}</div>
@@ -656,11 +656,11 @@ const loadImg = src => new Promise((ok, no) => { const i = new Image(); i.onload
 const logoMark = () => (mark ||= loadImg("/assets/logo.png"));
 
 // perkecil foto di browser agar upload ringan, lalu tempel watermark; hasilnya yang diunggah (asli tetap di perangkat Anda)
-async function prepare(file, wm = true) { // wm=false: tanpa watermark (bukti bayar)
+async function prepare(file, wm = true, max = wm ? 800 : 1600) { // wm=false: tanpa watermark (bukti bayar)
   const url = URL.createObjectURL(file);
   try {
     const img = await loadImg(url), m = wm && await logoMark();
-    const s = Math.min(1, (wm ? 800 : 1600) / Math.max(img.width, img.height)), c = document.createElement("canvas");
+    const s = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas");
     c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
     const x = c.getContext("2d");
     x.drawImage(img, 0, 0, c.width, c.height);
@@ -673,6 +673,9 @@ async function prepare(file, wm = true) { // wm=false: tanpa watermark (bukti ba
   } finally { URL.revokeObjectURL(url); }
 }
 
+// foto produk: ukuran utama 800px + mini 400px untuk kartu katalog (PERF-4)
+const photo = async f => ({ dataUrl: await prepare(f), thumb: await prepare(f, true, 400) });
+
 const say = (t, bad) => { $("msg").textContent = t; $("msg").style.color = bad ? "#c00" : "#080"; };
 const grab = () => { data.wa = $("wa").value; data.notice = $("notice").value; };
 
@@ -682,7 +685,7 @@ $("go").onclick = async () => {
   $("go").disabled = true; $("loading").hidden = false;
   try {
     await api("GET", "/api/check");
-    data = await (await fetch("/api/data")).json();
+    data = await api("GET", "/api/admin/catalog");
     orders = await api("GET", "/api/orders"); inbox = await api("GET", "/api/inbox"); settings = await api("GET", "/api/settings"); fillCfg(); courDatalist(); renderAll();
     $("login").hidden = true; $("app").hidden = false; render();
   } catch (e) { $("err").textContent = e.message; }
@@ -711,15 +714,19 @@ $("add").onclick = () => {
   showView("bulk");
 };
 // Katalog langsung tersimpan setiap kali barang diedit atau dihapus (tidak ada tombol simpan terpisah)
-async function saveCatalog(msg) {
-  try { const r = await api("PUT", "/api/data", data); if (r.cats) data.cats = r.cats; say(msg); return true; }
-  catch (err) { say(err.message, true); $("eerr").textContent = err.message; return false; }
+// PERF-9: hanya barang yang berubah yang dikirim (maks 100 sekali kirim); meta = simpan juga WhatsApp, pengumuman, dan daftar kategori
+async function saveCatalog(msg, changed = [], meta = false) {
+  try {
+    for (let i = 0; i < changed.length; i += 100) { const r = await api("PUT", "/api/products", changed.slice(i, i + 100)); if (!meta) data.cats = r.cats; }
+    if (meta) data.cats = (await api("PUT", "/api/data", { wa: data.wa, notice: data.notice, cats: data.cats })).cats;
+    say(msg); return true;
+  } catch (err) { say(err.message, true); $("eerr").textContent = err.message; return false; }
 }
 let editing = -1, editBackup = null;
 const cancelEdit = () => { data.products[editing] = editBackup; $("edlg").close(); render(); }; // batal = buang perubahan
 $("edone").onclick = async () => {
   if (!data.products[editing].name.trim()) return void ($("eerr").textContent = "Nama barang wajib diisi.");
-  if (await saveCatalog("✅ Barang tersimpan.")) { $("edlg").close(); render(); }
+  if (await saveCatalog("✅ Barang tersimpan.", [data.products[editing]])) { $("edlg").close(); render(); }
 };
 $("ecancel").onclick = cancelEdit;
 $("edlg").addEventListener("cancel", e => { e.preventDefault(); cancelEdit(); }); // tombol Esc
@@ -731,7 +738,8 @@ document.addEventListener("click", async e => {
   }
   if (e.target.dataset.del === undefined) return;
   if (!confirm("Hapus barang ini?")) return;
-  data.products.splice(e.target.dataset.del, 1); render(); await saveCatalog("✅ Barang dihapus.");
+  const [gone] = data.products.splice(e.target.dataset.del, 1); render();
+  try { await api("DELETE", "/api/products/" + encodeURIComponent(gone.id)); say("✅ Barang dihapus."); } catch (err) { say(err.message, true); }
 });
 
 document.addEventListener("change", async e => {
@@ -740,7 +748,7 @@ document.addEventListener("change", async e => {
   if (t.dataset.f !== "img") { p[t.dataset.f] = t.classList.contains("money") ? (t.value === "" ? null : money(t.value)) : t.type === "number" ? (t.value === "" ? null : Number(t.value)) : t.value; return; }
   try {
     say("Mengunggah foto…");
-    p.img = (await api("POST", "/api/upload", { dataUrl: await prepare(t.files[0]) })).img;
+    ({ img: p.img, thumb: p.thumb } = await api("POST", "/api/upload", await photo(t.files[0])));
     say("Foto terunggah."); renderForm(t.dataset.i);
   } catch (err) { say(err.message, true); }
 });
@@ -833,12 +841,13 @@ $("save").onclick = async () => { // hanya di halaman Pengaturan
   const err0 = bad(catRows, "kategori") || bad(courRows, "kurir"); if (err0) return say(err0, true);
   grab();
   // ubah nama kategori ikut mengubah barangnya (SET-7)
-  catRows.forEach(r => { const n = r.name.trim(); if (r.orig && r.orig !== n) data.products.forEach(p => { if (p.cat === r.orig) p.cat = n; }); r.orig = n; r.name = n; });
+  const moved = [];
+  catRows.forEach(r => { const n = r.name.trim(); if (r.orig && r.orig !== n) data.products.forEach(p => { if (p.cat === r.orig) { p.cat = n; moved.push(p); } }); r.orig = n; r.name = n; });
   data.cats = catRows.map(r => r.name);
   settings = { ...settings, ...Object.fromEntries(CFG.map(k => [k, $("cfg-" + k).value.trim()])), couriers: courRows.map(c => ({ name: c.name.trim(), on: true })) }; // rekening tetap dari server
   try { await api("PUT", "/api/settings", settings); } catch (err) { return say(err.message, true); }
   courDatalist();
-  if (await saveCatalog("✅ Pengaturan tersimpan.")) render();
+  if (await saveCatalog("✅ Pengaturan tersimpan.", moved, true)) render();
 };
 
 // ===== tambah banyak produk: 1 pilih foto, 2 isi data, 3 selesai =====
@@ -919,7 +928,7 @@ async function addFiles(list) {
   W.busy = true; // unggah satu per satu
   let x;
   while ((x = W.items.find(y => y.status === "up"))) {
-    try { x.img = (await api("POST", "/api/upload", { dataUrl: await prepare(x.file) })).img; x.status = "ok"; }
+    try { ({ img: x.img, thumb: x.thumb } = await api("POST", "/api/upload", await photo(x.file))); x.status = "ok"; }
     catch (e) { x.status = "err"; say(`${x.file.name}: ${e.message}`, true); }
     if (W.step === 1) wz1();
   }
@@ -930,9 +939,10 @@ async function wzSave() {
   const x = W.items[W.i], v = id => $(id).value.trim(), fail = t => { $("werr").textContent = t; };
   if (!v("wn")) return fail("Nama produk wajib diisi.");
   if (!(money(v("wp")) > 0)) return fail("Harga wajib diisi.");
-  data.products.unshift({ id: x.id, name: v("wn"), desc: v("wd"), price: money(v("wp")), cat: v("wc") || "Lainnya", stock: v("ws") === "" ? null : Number(v("ws")), badge: $("wb").value, img: x.img });
-  try { grab(); await api("PUT", "/api/data", data); }
-  catch (e) { data.products.shift(); return fail(e.message); }
+  const np = { id: x.id, name: v("wn"), desc: v("wd"), price: money(v("wp")), cat: v("wc") || "Lainnya", stock: v("ws") === "" ? null : Number(v("ws")), badge: $("wb").value, img: x.img, thumb: x.thumb };
+  try { data.cats = (await api("PUT", "/api/products", [np])).cats; }
+  catch (e) { return fail(e.message); }
+  data.products.unshift(np);
   x.status = "saved"; W.cat = v("wc"); W.added++;
   page = 1; render(); settle(); wz();
 }
@@ -1044,7 +1054,7 @@ function renderInvoices() {
 // foto barang dari katalog, dicocokkan lewat nama (pesanan tidak menyimpan id produk); dipakai juga oleh formulir pengiriman
 // shortcut: cocok hanya bila nama persis sama (nama, atau nama + catatan); tak cocok = ikon 🛍️
 const picOf = i => { const k = s => (s || "").trim().toLowerCase(), n = k(i.name), nn = k(`${i.name} ${i.note}`), nb = k(`${i.name} (${i.note})`);
-  return (data.products.find(p => [nn, nb, n].includes(k(p.name)) && p.img) || {}).img; };
+  const p = data.products.find(p => [nn, nb, n].includes(k(p.name)) && (p.thumb || p.img)); return p && (p.thumb || p.img); };
 let iView = "list"; try { iView = localStorage.getItem("invView") === "img" ? "img" : "list"; } catch { } // INV-13
 
 // ---- Pelanggan (PLG-*): diturunkan dari invoice, satu pelanggan = satu nomor HP; tidak ada data baru disimpan
@@ -1242,9 +1252,10 @@ $("isave").onclick = async () => {
   const bad = items.find(i => !i.name || i.qty < 1 || i.price < 1 || i.discount > i.qty * i.price);
   if (bad) return fail("Setiap barang harus punya nama, jumlah, dan harga; diskon tidak boleh melebihi harga.");
   v.items = items; v.total = calc(items, v.shipping).total;
-  if (cur) Object.assign(cur, v);
-  else orders.unshift({ id: newId(), created: today(), paidAt: "", proof: "", courier: "", resi: "", shipDate: "", shipped: "", pesananKode: pFrom?.code || "", ...v, invoice: v.invoice || nextInvoice() });
-  $("idlg").close(); await saveOrders();
+  let o = cur;
+  if (o) Object.assign(o, v);
+  else orders.unshift(o = { id: newId(), created: today(), paidAt: "", proof: "", courier: "", resi: "", shipDate: "", shipped: "", pesananKode: pFrom?.code || "", ...v, invoice: v.invoice || nextInvoice() });
+  $("idlg").close(); await saveOrder(o);
 };
 
 // invoice yang dibuat sistem (cetak / simpan sebagai PDF lewat dialog cetak browser)
@@ -1286,7 +1297,7 @@ $("pcancel").onclick = () => $("pdlg").close();
 $("psave").onclick = async () => {
   if (!dd.proof) return void ($("perr").textContent = "Bukti pembayaran wajib diunggah.");
   Object.assign(cur, { proof: dd.proof, paidAt: today() });
-  $("pdlg").close(); await saveOrders(); say("✅ Lunas. Pesanan otomatis masuk ke Pengiriman.");
+  $("pdlg").close(); await saveOrder(cur); say("✅ Lunas. Pesanan otomatis masuk ke Pengiriman.");
 };
 
 // ---- Pengiriman: hanya berisi invoice yang sudah dibayar
@@ -1329,9 +1340,12 @@ function renderOrders() {
   $("otable").insertAdjacentHTML("beforeend", pagerHtml("ship", oPage, list.length));
 }
 
-async function saveOrders() {
-  try { await api("PUT", "/api/orders", orders); }
-  catch (e) { say(e.message, true); orders = await api("GET", "/api/orders").catch(() => orders); } // kembalikan ke data server
+// PERF-8: satu invoice disimpan sendiri (del = hapus); server mengembalikan versi bersihnya (total dihitung ulang)
+async function saveOrder(o, del) {
+  try {
+    const r = await api(del ? "DELETE" : "PUT", "/api/orders/" + encodeURIComponent(o.id), del ? undefined : o);
+    if (r.order) Object.assign(o, r.order);
+  } catch (e) { say(e.message, true); orders = await api("GET", "/api/orders").catch(() => orders); } // kembalikan ke data server
   renderAll();
 }
 
@@ -1347,13 +1361,13 @@ function openShip(o) {
 }
 const shipFields = () => ({ courier: $("s-courier").value.trim(), resi: $("s-resi").value.trim(), shipDate: $("s-shipDate").value });
 $("scancel").onclick = () => $("sdlg").close();
-$("sset").onclick = async () => { Object.assign(cur, shipFields()); $("sdlg").close(); await saveOrders(); };
+$("sset").onclick = async () => { Object.assign(cur, shipFields()); $("sdlg").close(); await saveOrder(cur); };
 $("ssend").onclick = async () => {
   const f = shipFields();
   if (!f.courier) return void ($("serr").textContent = "Kurir wajib diisi.");
   if (!f.resi) return void ($("serr").textContent = "Nomor resi wajib diisi.");
   Object.assign(cur, f, { shipped: today() });
-  $("sdlg").close(); await saveOrders();
+  $("sdlg").close(); await saveOrder(cur);
 };
 
 async function invAction(a, o) {
@@ -1361,8 +1375,8 @@ async function invAction(a, o) {
   if (a === "pay") return openPay(o);
   if (a === "edit") return openInvoice(o);
   if (a === "unpay") { if (!confirm(`Batalkan pembayaran ${o.invoice}? Pesanan keluar dari Pengiriman.`)) return; o.paidAt = ""; }
-  if (a === "del") { if (!confirm(`Hapus invoice ${o.invoice} (${o.customer})?`)) return; orders = orders.filter(x => x !== o); }
-  await saveOrders();
+  if (a === "del") { if (!confirm(`Hapus invoice ${o.invoice} (${o.customer})?`)) return; orders = orders.filter(x => x !== o); return saveOrder(o, true); }
+  await saveOrder(o);
 }
 // label pengiriman: nomor HP dan isi barang disamarkan, jumlah barang tampil, harga tidak ditampilkan
 let labelOrder = null; // pesanan yang labelnya sedang dilihat (KIR-12)
@@ -1386,7 +1400,7 @@ $("lprint").onclick = async () => {
   const o = labelOrder; printing = true; window.print();
   // pindah ke Sudah Dikirim saat tombol ini ditekan; pratinjau baru ditutup di afterprint
   if (!o || o.shipped || !o.paidAt || !o.courier || !o.resi) return;
-  o.shipped = today(); await saveOrders();
+  o.shipped = today(); await saveOrder(o);
   say(`✅ Label ${o.invoice} dicetak, pesanan dianggap sudah dikirim. Batal kirim ada di menu ⋮ tab Sudah Dikirim.`);
 };
 addEventListener("afterprint", () => { if (printing) { printing = false; $("ldlg").close(); } }); // cetak invoice tidak menutup apa pun
@@ -1396,7 +1410,7 @@ async function shipAction(a, o) {
   if (a === "view") return openInvoiceView(o);
   if (a === "label") { if (!labelReady(o)) { say("Isi kurir, jadwal, dan nomor resi dulu.", true); return openShip(o); } return openLabel(o); }
   if (a === "ship" || a === "set") return openShip(o);
-  if (a === "unship") { o.shipped = ""; await saveOrders(); }
+  if (a === "unship") { o.shipped = ""; await saveOrder(o); }
 }
 $("v-invoice").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;

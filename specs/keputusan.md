@@ -26,6 +26,8 @@ Format: tanggal, keputusan, alasan. Yang masih terbuka ada di bagian bawah.
 - **2026-11-17 — Pesanan dicatat di sistem saat tombol "Pesan via WhatsApp" ditekan (menu Pesanan Masuk), diberi kode `PSN-XXXXXX`, dan dicocokkan dengan invoice.** Invoice tetap dibuat admin. Pesanan yang tidak diinvoice dibiarkan, dihapus manual. *Alasan:* admin perlu membandingkan isi chat WhatsApp dengan pesanan dan invoice. Spec: [08](08-pesanan-masuk.md).
 
 - **2026-11-18 — Daftar di admin (Katalog, Invoice, Pengiriman, Pelanggan, Pesanan Masuk) memakai halaman bernomor, maksimal 10 baris per halaman.** Toko pelanggan tetap gulir tak terbatas. *Alasan:* permintaan pemilik toko; membalik keputusan 2026-11-03 hanya untuk admin. Spec: [09](09-paginasi-admin.md).
+- **2026-11-19 — Performa dan skala: cache foto selamanya, gzip, foto mini 400px, barang dan invoice masing-masing satu dokumen MongoDB, toko memuat barang per halaman dari server, tanpa migrasi data.** Perubahan perilaku: perubahan admin tampil di toko paling lama ±30 detik (cache CDN). *Alasan:* permintaan pemilik toko agar situs tidak melambat saat foto dan data banyak; situs belum dipakai sehingga aman diubah besar. Spec: [10](10-performa.md).
+
 ## Terbuka (belum diputuskan)
 
 - Tab **Kategori** dan **Kurir** sebagai daftar terkelola di Pengaturan (ada di contoh desain).

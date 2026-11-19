@@ -125,7 +125,7 @@
 <div class="wrap" id="shop">
   <div class="top">
   <div class="head">
-    <img src="/assets/logo.png" alt="Jasa Titip Belanja">
+    <img src="/assets/logo-s.png" alt="Jasa Titip Belanja">
     <div><p>We make shopping easy</p></div>
   </div>
   <div class="notice" id="notice" hidden></div>
@@ -172,14 +172,18 @@
 </section>
 
 <script>
-let WA = "", PRODUCTS = []; // diisi dari /api/data (diatur lewat halaman /admin)
+let WA = "", CATS = []; // diisi dari /api/data (diatur lewat halaman /admin); CATS = kategori yang ada barangnya, urut menurut admin (SET-6)
+// PERF-9: barang dimuat per halaman dari server. KNOWN = barang yang pernah dimuat (kartu dan keranjang), menurut id.
+const KNOWN = new Map(), P = id => KNOWN.get(id), know = list => list.forEach(p => KNOWN.set(p.id, p));
+const getProducts = qs => fetch("/api/products?" + qs).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); });
+const thumb = p => p.thumb || p.img; // PERF-4: kartu dan keranjang memakai foto mini (barang lama: foto utama)
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 const $ = id => document.getElementById(id);
 const BADGES = { new: "New Stock", hot: "🔥 Hot Item", flash: "⚡ Flash Sale" }; // diatur admin per barang
 const rp = n => "Rp" + n.toLocaleString("id-ID");
 const CART = `<svg viewBox="0 0 24 24"><path d="M2 3h3l2.5 12h11L21 7H6"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg>`;
 const PER = 12;                   // barang yang dimuat setiap kali menggulir ke bawah
-let page = 1;
+let shown = 0, TOTAL = 0, busy = false, failed = false, ticket = 0, resolved = false; // resolved: isi keranjang sudah dicek ke server
 // PSM-1: kode pesanan baru setiap halaman dimuat; pesan WhatsApp memuat kode ini, server menyimpan isi keranjangnya
 const CODE = "PSN-" + [...crypto.getRandomValues(new Uint8Array(6))].map(n => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[n % 32]).join("");
 const sel = new Set();             // kategori terpilih
@@ -209,34 +213,40 @@ const fitCols = () => {
 fitCols(); addEventListener("resize", fitCols);
 let sortBy = "desc"; // "desc" | "asc" (TOK-14): awal = harga tertinggi
 const SORTS = { asc: "Harga terendah", desc: "Harga tertinggi" };
-let CATS = []; // urutan kategori dari admin (SET-6); kategori tanpa barang tidak ditampilkan
-const cats = () => [...new Set([...CATS, ...PRODUCTS.map(p => p.cat)])].filter(c => c && PRODUCTS.some(p => p.cat === c));
 
 // daftar bertambah sendiri ke bawah saat penanda di dasar daftar hampir terlihat
 function autoMore() {
   const el = $("pager");
-  if (!$("shop").hidden && !el.hidden && el.getBoundingClientRect().top < innerHeight + 300) { page++; renderGrid(); }
+  if (!$("shop").hidden && !el.hidden && !busy && !failed && el.getBoundingClientRect().top < innerHeight + 300) loadGrid();
 }
 addEventListener("scroll", autoMore, { passive: true });
+$("pager").onclick = () => { failed = false; loadGrid(); }; // gagal memuat: ketuk untuk mencoba lagi
 
-function renderGrid() {
-  const q = $("q").value.toLowerCase();
-  const list = PRODUCTS.filter(p => (q || max(p) >= 1) && (!sel.size || sel.has(p.cat)) && (p.name + " " + p.desc).toLowerCase().includes(q)); // TOK-21: stok habis tersembunyi sampai dicari
-  list.sort((a, b) => sortBy === "asc" ? a.price - b.price : b.price - a.price);
-  const pages = Math.max(1, Math.ceil(list.length / PER));
-  page = Math.min(page, pages);
-  $("pager").hidden = page >= pages; $("pager").textContent = "Memuat barang lainnya…";
-  requestAnimationFrame(autoMore); // layar tinggi: lanjut memuat sampai layar penuh
-  $("grid").innerHTML = list.slice(0, page * PER).map(p => `
+const card = p => `
     <div class="card">
       ${BADGES[p.badge] ? `<span class="tagp ${p.badge}">${BADGES[p.badge]}</span>` : ""}
-      ${p.img ? `<img src="${esc(p.img)}" alt="" loading="lazy" decoding="async">` : `<div class="nopic">🛍️</div>`}
+      ${thumb(p) ? `<img src="${esc(thumb(p))}" alt="" loading="lazy" decoding="async">` : `<div class="nopic">🛍️</div>`}
       <h3>${esc(p.name)}</h3>
       <div class="sub">${esc(p.desc || p.cat)}</div>
       <div class="price">${rp(p.price)}</div>
       ${p.stock == null ? "" : `<div class="stock">${p.stock > 0 ? `Sisa ${p.stock}` : "Stok habis"}</div>`}
       <div class="act" data-id="${esc(p.id)}">${actHtml(p)}</div>
-    </div>`).join("") || `<p class="empty">Barang tidak ditemukan 🙏<br>Chat kami, mungkin bisa kami carikan!</p>`;
+    </div>`;
+// reset = mulai dari awal (cari/filter/urutan berubah); tanpa reset = halaman berikutnya. Server menyaring: stok habis tersembunyi sampai dicari (TOK-21)
+async function loadGrid(reset) {
+  if (reset) { ticket++; shown = TOTAL = 0; busy = failed = false; $("grid").innerHTML = ""; }
+  if (busy) return;
+  busy = true; const mine = ticket;
+  const qs = new URLSearchParams({ sort: sortBy, skip: shown, limit: PER }), q = $("q").value.trim();
+  if (q) qs.set("q", q); if (sel.size) qs.set("cat", [...sel].join("|"));
+  try {
+    const d = await getProducts(qs); if (mine !== ticket) return; // jawaban usang dari pencarian sebelumnya
+    know(d.items); shown += d.items.length; TOTAL = d.total;
+    $("grid").insertAdjacentHTML("beforeend", d.items.map(card).join(""));
+    if (!shown) $("grid").innerHTML = `<p class="empty">Barang tidak ditemukan 🙏<br>Chat kami, mungkin bisa kami carikan!</p>`;
+    $("pager").textContent = "Memuat barang lainnya…";
+  } catch { if (mine === ticket) { failed = true; if (!shown) $("grid").innerHTML = `<p class="empty">Gagal memuat katalog. Coba lagi nanti 🙏</p>`; else $("pager").textContent = "Gagal memuat. Ketuk untuk mencoba lagi"; } }
+  finally { if (mine === ticket) { busy = false; $("pager").hidden = failed ? !shown : shown >= TOTAL; requestAnimationFrame(autoMore); } } // layar tinggi: lanjut memuat sampai layar penuh
 }
 
 const sortLabel = () => { $("fsortl").textContent = SORTS[sortBy]; };
@@ -245,16 +255,16 @@ function renderFilter() {
   sortLabel();
   $("fsortp").innerHTML = Object.entries(SORTS).map(([k, l]) => `<label><input type="radio" name="fs" data-s="${k}" ${sortBy === k ? "checked" : ""}>${l}</label>`).join("");
   catLabel();
-  $("fcatp").innerHTML = cats().map(c => `<label><input type="checkbox" data-c="${esc(c)}" ${sel.has(c) ? "checked" : ""}>${esc(c)}</label>`).join("") + (sel.size ? `<button type="button" id="fclr">Hapus pilihan</button>` : "");
+  $("fcatp").innerHTML = CATS.map(c => `<label><input type="checkbox" data-c="${esc(c)}" ${sel.has(c) ? "checked" : ""}>${esc(c)}</label>`).join("") + (sel.size ? `<button type="button" id="fclr">Hapus pilihan</button>` : "");
 }
 
 function renderCart() {
-  try { localStorage.cart = JSON.stringify(cart); } catch {}
-  for (const id in cart) { // buang barang yang sudah dihapus admin / batasi sesuai stok
-    const p = PRODUCTS.find(p => p.id === id);
-    if (!p || max(p) < 1) delete cart[id]; else cart[id] = Math.min(cart[id], max(p));
+  for (const id in cart) { // buang barang yang sudah dihapus admin / batasi sesuai stok (setelah dicek ke server)
+    const p = P(id);
+    if (p && max(p) >= 1) cart[id] = Math.min(cart[id], max(p)); else if (resolved) delete cart[id];
   }
-  const rows = PRODUCTS.filter(p => cart[p.id]);
+  try { localStorage.cart = JSON.stringify(cart); } catch {}
+  const rows = Object.keys(cart).map(P).filter(Boolean);
   const count = rows.reduce((s, p) => s + cart[p.id], 0);
   const total = rows.reduce((s, p) => s + cart[p.id] * p.price, 0);
   $("fab").classList.toggle("empty", !count);
@@ -264,7 +274,7 @@ function renderCart() {
     : "";
   $("items").innerHTML = rows.map(p => `
     <div class="crow">
-      ${p.img ? `<img src="${esc(p.img)}" alt="">` : `<div class="nopic">🛍️</div>`}
+      ${thumb(p) ? `<img src="${esc(thumb(p))}" alt="">` : `<div class="nopic">🛍️</div>`}
       <div>
         <h3>${esc(p.name)}</h3>
         <div class="sub">${esc(p.desc || p.cat)}</div>
@@ -278,7 +288,7 @@ function renderCart() {
   const msg = "Halo, saya mau pesan:\n" + rows.map(p => `- ${p.name} x${cart[p.id]} = ${rp(cart[p.id] * p.price)}`).join("\n")
     + `\n\nTotal: ${rp(total)}\nKode pesanan: ${CODE}\n\nNama: ${$("cname").value.trim()}\nHP: ${phone08($("cphone").value)}\nAlamat: ${$("caddr").value.trim()}`;
   $("send").href = `https://wa.me/${WA}?text=${encodeURIComponent(msg)}`;
-  document.querySelectorAll(".act[data-id]").forEach(el => { const p = PRODUCTS.find(p => p.id === el.dataset.id); if (p) el.innerHTML = actHtml(p); });
+  document.querySelectorAll(".act[data-id]").forEach(el => { const p = P(el.dataset.id); if (p) el.innerHTML = actHtml(p); });
 }
 
 // PSM-10: nama dan HP pelanggan, diingat di browser; HP dinormalisasi seperti di server (+62…, 62…, 8… -> 08…)
@@ -308,17 +318,17 @@ $("send").addEventListener("click", e => {
 
 document.addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  const d = b.dataset, p = PRODUCTS.find(p => p.id === (d.buy || d.inc || d.dec));
-  if (d.buy) { cart[p.id] = Math.min(max(p), (cart[p.id] || 0) + 1); renderCart(); }
-  if (d.inc) { cart[p.id] = Math.min(max(p), cart[p.id] + 1); renderCart(); }
-  if (d.dec) { if (--cart[p.id] <= 0) delete cart[p.id]; renderCart(); }
+  const d = b.dataset, p = P(d.buy || d.inc || d.dec);
+  if (d.buy && p) { cart[p.id] = Math.min(max(p), (cart[p.id] || 0) + 1); renderCart(); }
+  if (d.inc && p) { cart[p.id] = Math.min(max(p), cart[p.id] + 1); renderCart(); }
+  if (d.dec && p) { if (--cart[p.id] <= 0) delete cart[p.id]; renderCart(); }
   if (d.cols) { colsAuto = false; setCols(d.cols); }
 });
-$("fsortp").onchange = e => { sortBy = e.target.dataset.s; page = 1; sortLabel(); $("fsortd").open = false; renderGrid(); };
-$("fcatp").onchange = e => { const c = e.target.dataset.c; if (!c) return; e.target.checked ? sel.add(c) : sel.delete(c); page = 1; catLabel(); renderGrid(); };
-$("fcatp").onclick = e => { if (e.target.id !== "fclr") return; sel.clear(); page = 1; renderFilter(); renderGrid(); };
+$("fsortp").onchange = e => { sortBy = e.target.dataset.s; sortLabel(); $("fsortd").open = false; loadGrid(true); };
+$("fcatp").onchange = e => { const c = e.target.dataset.c; if (!c) return; e.target.checked ? sel.add(c) : sel.delete(c); catLabel(); loadGrid(true); };
+$("fcatp").onclick = e => { if (e.target.id !== "fclr") return; sel.clear(); renderFilter(); loadGrid(true); };
 document.addEventListener("click", e => document.querySelectorAll(".dd").forEach(d => { if (!d.contains(e.target)) d.open = false; }));
-$("q").oninput = () => { page = 1; renderGrid(); };
+let qTimer; $("q").oninput = () => { clearTimeout(qTimer); qTimer = setTimeout(() => loadGrid(true), 250); }; // jangan tanya server di tiap ketukan
 // TOK-15: keranjang = halaman sendiri di #keranjang (tetap satu berkas; tombol Kembali di browser/HP berfungsi)
 let shopY = 0; // posisi gulir katalog, dipulihkan saat kembali
 const route = () => {
@@ -330,11 +340,15 @@ addEventListener("hashchange", route);
 $("fab").onclick = () => { shopY = scrollY; location.hash = "keranjang"; };
 route();
 
+loadGrid(true);
 fetch("/api/data").then(r => r.json()).then(d => {
-  ({ wa: WA, products: PRODUCTS } = d); CATS = d.cats || [];
+  WA = d.wa; CATS = d.cats || [];
   if (d.notice) { $("notice").textContent = d.notice; $("notice").hidden = false; }
-  renderFilter(); renderGrid(); renderCart();
-}).catch(() => { $("grid").innerHTML = `<p class="empty">Gagal memuat katalog. Coba lagi nanti 🙏</p>`; });
+  renderFilter(); renderCart();
+}).catch(() => {});
+// TOK-9: isi keranjang dicek ke server (barang terhapus / stok habis dibuang); gagal = keranjang dibiarkan
+const cartIds = Object.keys(cart).slice(0, 50);
+(cartIds.length ? getProducts("ids=" + encodeURIComponent(cartIds.join(","))) : Promise.resolve({ items: [] })).then(d => { know(d.items); resolved = true; renderCart(); }).catch(() => renderCart());
 </script>
 </body>
 </html>

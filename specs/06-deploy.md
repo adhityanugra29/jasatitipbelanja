@@ -13,9 +13,10 @@ Domain sendiri. Pemantauan dan cadangan otomatis. Lebih dari satu lingkungan (st
 - **DEP-1** `ADMIN_PASSWORD` dan `MONGODB_URI` wajib diisi sebagai *Environment Variables* di Vercel. Tanpa keduanya server berhenti dengan pesan jelas di log. — ⬜
 - **DEP-2** Semua rute diarahkan ke `api/index.js` (`vercel.json`), dan `index.html`, `admin.html`, `assets/**` ikut dibundel ke fungsi. — ⬜
 - **DEP-3** Batas isi permintaan Vercel ±4,5MB. Karena itu unggah dokumen (bukti bayar PDF) dibatasi **3MB** (±4MB setelah dikodekan base64). Foto bukti bayar dan foto produk diperkecil di browser sebelum diunggah, jadi jauh di bawah batas. — ✅ `tests/api.test.js` (API-6b)
-- **DEP-4** Data awal bersifat opsional: `MONGODB_URI=… node seed.js` menyalin `data.json`, `orders.json`, `settings.json`, `uploads/`, `docs/` ke MongoDB. Tanpa itu toko mulai kosong. — ⬜
+- **DEP-4** Data awal bersifat opsional: `MONGODB_URI=… node seed.js` menyalin `data.json`, `orders.json`, `settings.json`, `uploads/`, `docs/` (format lama) ke koleksi `kv`, `products`, `orders`, `files`. Tanpa itu toko mulai kosong. — ⬜
 - **DEP-4b** `npm run cek-db` memeriksa apakah `MONGODB_URI` bisa dipakai, tanpa menjalankan server, dan hanya menampilkan host (tidak pernah password). Menjelaskan penyebab yang umum bila gagal. — ✅ jalur gagal diuji (alamat tidak terjangkau); jalur berhasil ⬜ (butuh MongoDB sungguhan)
 - **DEP-5** Rekening di `server.js` (`BANK`) diganti dengan rekening asli **sebelum** invoice dikirim ke pelanggan. — 🚫 menunggu pemilik toko
+- **DEP-4c** `npm run bersihkan` menampilkan foto yatim; `-- --hapus` menghapusnya ([PERF-5](10-performa.md)). — ⬜ butuh MongoDB sungguhan
 - **DEP-6** Berkas data pelanggan (`orders.json`, `docs/`, `uploads/`, `settings.json`, `data.json`) tidak masuk git. — ✅ dicek `git ls-files`
 - **DEP-7** Uji setelah deploy: halaman toko terbuka; admin bisa login; tambah barang dengan foto tampil di toko; unggah bukti bayar; `tests/api.test.js` lolos terhadap alamat Vercel. — ⬜ belum pernah di-deploy
 

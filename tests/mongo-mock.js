@@ -3,18 +3,33 @@
 // DEMO=1 mengisi data contoh dari orders.json (invoice) lengkap dengan katalog dan pesanan masuk yang sesuai. Hanya mendukung perintah yang dipakai server.js.
 const Module = require("module"), fs = require("fs"), path = require("path");
 const cols = new Map();
+// pencocokan filter yang dipakai server: kesamaan, $in, $ne, $regex(+$options), $or
+const cond = (v, c) => c && typeof c === "object" && Object.keys(c).some(k => k[0] === "$")
+  ? Object.entries(c).every(([op, a]) => op === "$in" ? a.includes(v) : op === "$ne" ? v !== a : op === "$regex" ? new RegExp(a, c.$options).test(v ?? "") : op === "$options")
+  : v === c;
+const match = (d, f = {}) => Object.entries(f).every(([k, c]) => k === "$or" ? c.some(x => match(d, x)) : cond(d[k], c));
 const col = name => {
   if (!cols.has(name)) cols.set(name, new Map());
-  const m = cols.get(name), by = (k, dir = 1) => (a, b) => (a[k] > b[k] ? 1 : a[k] < b[k] ? -1 : 0) * dir;
+  const m = cols.get(name), live = f => [...m.values()].filter(d => match(d, f)), rows = f => live(f).map(d => ({ ...d })); // rows: salinan, seperti driver asli
+  const cmp = o => (a, b) => { for (const [k, dir] of Object.entries(o)) { const r = (a[k] > b[k] ? 1 : a[k] < b[k] ? -1 : 0) * dir; if (r) return r; } return 0; };
+  const updateOne = async (f, u, o) => {
+    let d = live(f)[0];
+    if (!d) { if (!o?.upsert) return; d = { _id: f._id, ...u.$setOnInsert }; }
+    Object.assign(d, u.$set); m.set(d._id, d);
+  };
   return {
-    findOne: async f => m.get(f._id),
+    findOne: async f => rows(f)[0],
     replaceOne: async (f, d) => { m.set(f._id, { _id: f._id, ...d, ...(d.buf && { buf: { buffer: d.buf } }) }); }, // buf: seperti Binary milik driver
-    deleteOne: async f => { m.delete(f._id); },
-    deleteMany: async f => { f._id.$in.forEach(id => m.delete(id)); },
-    find: () => { let rows = [...m.values()]; const c = {
-      sort: o => { const [k, d] = Object.entries(o)[0]; rows.sort(by(k, d)); return c; },
-      skip: n => { rows = rows.slice(n); return c; }, limit: n => { rows = rows.slice(0, n); return c; },
-      toArray: async () => rows }; return c; },
+    updateOne, updateMany: async (f, u) => live(f).forEach(d => Object.assign(d, u.$set)),
+    bulkWrite: async ops => { for (const { updateOne: x } of ops) await updateOne(x.filter, x.update, { upsert: x.upsert }); },
+    deleteOne: async f => { rows(f).slice(0, 1).forEach(d => m.delete(d._id)); },
+    deleteMany: async f => { rows(f).forEach(d => m.delete(d._id)); },
+    countDocuments: async f => rows(f).length, estimatedDocumentCount: async () => m.size, createIndex: async () => {},
+    distinct: async k => [...new Set(rows().map(d => d[k]))],
+    find: (f = {}) => { let r = rows(f); const c = {
+      sort: o => { r.sort(cmp(o)); return c; },
+      skip: n => { r = r.slice(n); return c; }, limit: n => { r = r.slice(0, n); return c; },
+      toArray: async () => r }; return c; },
   };
 };
 if (process.env.DEMO) try {
@@ -24,7 +39,8 @@ if (process.env.DEMO) try {
   const products = [...price].map(([name, p], n) => ({ id: "p" + (n + 1), name, price: p, cat: "Contoh", desc: "", badge: "", stock: null, img: "/uploads/demo-tas.jpg" }));
   col("files").replaceOne({ _id: "uploads/demo-tas.jpg" }, { buf: fs.readFileSync(path.join(__dirname, "demo-tas.jpg")) }); // foto contoh yang sama untuk semua barang demo
   const pid = name => products.find(p => p.name === name).id;
-  col("kv").replaceOne({ _id: "data" }, { v: { wa: "6281234567890", notice: "", products } });
+  products.forEach(({ id, ...p }, n) => col("products").replaceOne({ _id: id }, { ...p, t: n }));
+  col("kv").replaceOne({ _id: "data" }, { v: { wa: "6281234567890", notice: "", cats: ["Contoh"] } });
   // pesanan per invoice: [kode, menit yang lalu, [[barang, qty]]]. Sebagian sengaja berbeda dari invoicenya.
   const PSN = { "INV-2026110001": ["PSN-A3M8WE", 120, [["Tote bag kulit", 1]]],                            // cocok
     "INV-2026110002": ["PSN-D5W2KP", 200, [["Sneakers putih", 1], ["Kaos kaki", 3]]],                      // selisih: jumlah (invoice 2)
@@ -40,7 +56,7 @@ if (process.env.DEMO) try {
   put("PSN-K7Q2XM", 5, { name: sari.customer, phone: sari.phone, address: sari.address }, [["Tote bag kulit", 1], ["Flat shoes", 2]]); // Baru, pelanggan lama (HP sama dengan Ibu Sari)
   put("PSN-9HT4BD", 40, { name: "Ibu Wulan", phone: "081298765432", address: "Jl. Anggrek No. 5, Cimahi Tengah, 40525" }, [["Sling bag", 1]], [["Sling bag", 2]]); // Sudah dicocokkan dengan koreksi (qty 1 -> 2, sesuai chat), belum diinvoice
   put("PSN-W4D7QP", 20, { name: "Ibu Citra", phone: "081355556666", address: "Jl. Kenanga No. 3, Bandung" }, [["Flat shoes", 1]]); // Baru, pelanggan baru
-  col("kv").replaceOne({ _id: "orders" }, { v: orders.map(o => ({ ...o, pesananKode: PSN[o.invoice]?.[0] || "", items: o.items.map(i => ({ note: "", discount: 0, ...i })) })) });
+  orders.map(o => ({ ...o, pesananKode: PSN[o.invoice]?.[0] || "", items: o.items.map(i => ({ note: "", discount: 0, ...i })) })).forEach((o, n) => col("orders").replaceOne({ _id: o.id }, { ...o, t: n }));
 } catch (e) { console.error("DEMO: orders.json tidak terbaca:", e.message); }
 const mock = { MongoClient: class { connect() { return Promise.resolve({ db: () => ({ collection: col }) }); } } };
 const load = Module._load;
