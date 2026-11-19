@@ -1,6 +1,6 @@
 # 00 — API server
 
-Berkas: `server.js`, `api/index.js` (Vercel), `seed.js`, `tests/api.test.js`
+Berkas: `server.js`, `api/server.js` (Vercel), `seed.js`, `tests/api.test.js`
 
 ## Tujuan
 Satu server kecil melayani halaman toko, halaman admin, dan data. Semua aturan bisnis yang tidak boleh dilanggar dijaga di sini, bukan hanya di halaman.
@@ -19,6 +19,6 @@ Rute publik: `GET /`, `/admin`, `/assets/*`, `/uploads/*`, `GET /api/data`, `GET
 - **API-5** `POST /api/upload` menerima gambar JPEG/PNG/WEBP (data URL) dan gambar mini opsional (`thumb`), menyimpannya sebagai `/uploads/<uuid>.<ext>` dan `<uuid>-s.<ext>`, dan hasilnya publik. Tipe lain ditolak. — ✅ `tests/api.test.js`
 - **API-6** `POST /api/doc` menerima PDF/JPEG/PNG/WEBP ≤**3MB** (batas isi permintaan Vercel, lihat DEP-3); PDF harus berawalan `%PDF-`. Dokumen **privat**: hanya `GET /api/doc/<nama>` dengan `x-admin`. — ✅ `tests/api.test.js` (API-6, API-6b)
 - **API-7** `GET /api/settings` menggabungkan pengaturan tersimpan dengan konstanta `BANK` di kode. `PUT /api/settings` hanya menyimpan `storeName, address, phone, email, npwp, admin` (≤200). Kunci rekening diabaikan. — ✅ `tests/api.test.js`
-- **API-8** Penyimpanan di MongoDB (`MONGODB_URI` wajib): koleksi `kv` (`data`: wa, pengumuman, kategori; `settings`), `products`, `orders`, `inbox` (pesanan masuk), dan `files` (`uploads/…`, `docs/…`). Barang di `products`, invoice di `orders` (satu dokumen per baris, [10](10-performa.md)). Di Vercel lewat `api/index.js`. — ⬜ Tes di atas dijalankan dengan MongoDB tiruan di memori (`tests/mongo-mock.js`). Belum pernah dijalankan pada MongoDB sungguhan atau Vercel.
+- **API-8** Penyimpanan di MongoDB (`MONGODB_URI` wajib): koleksi `kv` (`data`: wa, pengumuman, kategori; `settings`), `products`, `orders`, `inbox` (pesanan masuk), dan `files` (`uploads/…`, `docs/…`). Barang di `products`, invoice di `orders` (satu dokumen per baris, [10](10-performa.md)). Di Vercel lewat `api/server.js`. — ⬜ Tes di atas dijalankan dengan MongoDB tiruan di memori (`tests/mongo-mock.js`). Belum pernah dijalankan pada MongoDB sungguhan atau Vercel.
 - **API-9** Batas ukuran isi permintaan: 3MB, kecuali `/api/doc` 4,4MB (muat file 3MB setelah base64). — ✅ batas file di API-6b; batas isi permintaan ⬜
 - **API-10** Perbandingan password memakai SHA-256 dan `timingSafeEqual`. — ⬜ (hanya dibaca di kode)

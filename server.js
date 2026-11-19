@@ -1,5 +1,5 @@
 // Lokal: ADMIN_PASSWORD=rahasia MONGODB_URI=mongodb+srv://... node server.js   (setelah npm install)
-// Vercel: api/index.js memakai handler yang diekspor di bawah. Data, gambar, dan dokumen disimpan di MongoDB.
+// Vercel: api/server.js memakai handler yang diekspor di bawah. Data, gambar, dan dokumen disimpan di MongoDB.
 // Spec: specs/10-performa.md (cache, gzip, satu dokumen per barang/invoice, foto mini).
 const http = require("http"), fs = require("fs"), path = require("path"), crypto = require("crypto"), zlib = require("zlib");
 const { MongoClient } = require("mongodb");

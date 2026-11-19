@@ -2,9 +2,9 @@
   "cleanUrls": true,
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
-    { "source": "/api/(.*)", "destination": "/api/index?p=/api/$1" },
-    { "source": "/uploads/(.*)", "destination": "/api/index?p=/uploads/$1" }
+    { "source": "/api/(.*)", "destination": "/api/server?p=/api/$1" },
+    { "source": "/uploads/(.*)", "destination": "/api/server?p=/uploads/$1" }
   ],
   "headers": [{ "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }] }],
-  "functions": { "api/index.js": { "includeFiles": "public/**" } }
+  "functions": { "api/server.js": { "includeFiles": "public/**" } }
 }
