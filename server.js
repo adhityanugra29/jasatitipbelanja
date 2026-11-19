@@ -5,9 +5,10 @@ const http = require("http"), fs = require("fs"), path = require("path"), crypto
 const { MongoClient } = require("mongodb");
 const PORT = process.env.PORT || 3000;
 const PASS = process.env.ADMIN_PASSWORD;
-if (!PASS) { console.error("Set ADMIN_PASSWORD dulu."); process.exit(1); }
 const DIR = __dirname;
-if (!process.env.MONGODB_URI) { console.error("Set MONGODB_URI dulu."); process.exit(1); }
+// DEP-1: lokal berhenti dengan pesan; di Vercel setiap permintaan dijawab 500 dengan pesan yang sama (bukan FUNCTION_INVOCATION_FAILED tanpa keterangan)
+const MISSING = [!PASS && "ADMIN_PASSWORD", !process.env.MONGODB_URI && "MONGODB_URI"].filter(Boolean).join(" dan ");
+if (MISSING && require.main === module) { console.error("Set " + MISSING + " dulu."); process.exit(1); }
 // rekening tujuan transfer (tampil di footer invoice): ubah di sini, tidak ada di halaman admin
 const BANK = { bankName: "BCA", bankNo: "0000000000", bankHolder: "Nama Pemilik Rekening" };
 // SET-8/10/11: bawaan bila admin belum mengaturnya
@@ -55,14 +56,17 @@ const send = (res, code, obj, cache = "no-store") => {
   res.writeHead(code, h); res.end(raw);
 };
 const body304 = (req, res, etag) => req.headers["if-none-match"] === etag && (res.writeHead(304, { etag }), res.end(), true);
-// PERF-3: halaman dan logo dibaca sekali saat server mulai; html dikirim gzip
-const STATIC = {};
-const addStatic = (url, file, cache) => {
-  const buf = fs.readFileSync(path.join(DIR, file));
-  STATIC[url] = { buf, gz: path.extname(file) === ".html" ? zlib.gzipSync(buf) : null, type: typeOf(file), cache, etag: '"' + crypto.createHash("sha1").update(buf).digest("hex").slice(0, 16) + '"' };
+// PERF-3: halaman dan logo dibaca sekali (permintaan pertama) lalu disimpan di memori; html dikirim gzip
+const STATIC = {}, PAGES = { "/": "index.html", "/index.html": "index.html", "/admin": "admin.html" };
+const staticFor = url => {
+  const file = PAGES[url] || (/^\/assets\/[\w.-]+$/.test(url) &&"assets/" + path.basename(url));
+  if (!file) return null;
+  if (!STATIC[file]) { // gagal baca = lempar galat (jadi jawaban 400 berisi pesan), bukan menghentikan fungsi
+    let buf; try { buf = fs.readFileSync(path.join(DIR, file)); } catch (e) { if (e.code === "ENOENT" && file.startsWith("assets/")) return null; throw e; }
+    STATIC[file] = { buf, gz: path.extname(file) === ".html" ? zlib.gzipSync(buf) : null, type: typeOf(file), cache: file.startsWith("assets/") ? "public, max-age=86400" : "public, max-age=0, must-revalidate", etag: '"' + crypto.createHash("sha1").update(buf).digest("hex").slice(0, 16) + '"' };
+  }
+  return STATIC[file];
 };
-addStatic("/", "index.html", "public, max-age=0, must-revalidate"); addStatic("/admin", "admin.html", "public, max-age=0, must-revalidate");
-for (const f of fs.readdirSync(path.join(DIR, "assets"))) addStatic("/assets/" + f, "assets/" + f, "public, max-age=86400");
 const serveStatic = (req, res, s) => {
   if (body304(req, res, s.etag)) return;
   const zip = s.gz && gz(req), h = { "content-type": s.type, "cache-control": s.cache, etag: s.etag, ...(s.gz && { vary: "accept-encoding" }) };
@@ -135,7 +139,10 @@ const handler = async (req, res) => {
   const sp = new URL(req.url, "http://x").searchParams;
   const url = sp.get("p") || req.url.split("?")[0], GET = req.method === "GET";
   try {
-    if (GET && (url === "/index.html" || STATIC[url])) return serveStatic(req, res, STATIC[url === "/index.html" ? "/" : url]);
+    if (MISSING) { res.writeHead(500, { "content-type": "text/plain; charset=utf-8" }); return res.end("Server belum siap: isi " + MISSING + " di Environment Variables Vercel, lalu Redeploy."); }
+    const page = GET && staticFor(url);
+    if (page) return serveStatic(req, res, page);
+    if (GET && /^\/assets\//.test(url)) { res.writeHead(404); return res.end("Tidak ditemukan"); }
     if (GET && url.startsWith("/uploads/")) return getFile(req, res, "uploads", url);
     // PERF-2: cache 30 detik (CDN); perubahan admin tampil di toko paling lama ±30 detik
     const SHORT = "public, s-maxage=30, stale-while-revalidate=60";
