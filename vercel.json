@@ -1,4 +1,4 @@
 {
   "rewrites": [{ "source": "/(.*)", "destination": "/api/index?p=/$1" }],
-  "functions": { "api/index.js": { "includeFiles": "{index.html,admin.html,assets/**}" } }
+  "functions": { "api/index.js": { "includeFiles": "web/**" } }
 }

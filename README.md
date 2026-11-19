@@ -30,13 +30,13 @@ Pengiriman sebelum pembayaran **tidak mungkin**. Aturan ini dijaga di server, bu
 
 | Berkas | Isi |
 |---|---|
-| `index.html` | Halaman toko |
-| `admin.html` | Halaman admin |
+| `web/index.html` | Halaman toko |
+| `web/admin.html` | Halaman admin |
 | `server.js` | Server dan semua aturan bisnis; data di MongoDB |
 | `api/index.js`, `vercel.json` | Pintu masuk untuk Vercel |
 | `seed.js` | Menyalin data lokal (format lama) ke MongoDB (sekali jalan, opsional) |
 | `bersihkan.js` | `npm run bersihkan`: daftar/hapus foto produk yang tidak dipakai |
-| `assets/` | Logo (`logo-s.png` untuk header, `logo.png` untuk watermark dan cetak) |
+| `web/assets/` | Logo (`logo-s.png` untuk header, `logo.png` untuk watermark dan cetak) |
 | `specs/` | Spesifikasi (sumber kebenaran) |
 | `tests/api.test.js` | Tes kontrak API |
 

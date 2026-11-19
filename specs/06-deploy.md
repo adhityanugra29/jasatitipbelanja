@@ -11,7 +11,7 @@ Domain sendiri. Pemantauan dan cadangan otomatis. Lebih dari satu lingkungan (st
 ## Kriteria
 
 - **DEP-1** `ADMIN_PASSWORD` dan `MONGODB_URI` wajib diisi sebagai *Environment Variables* di Vercel. Tanpa keduanya server berhenti dengan pesan jelas di log. — ⬜
-- **DEP-2** Semua rute diarahkan ke `api/index.js` (`vercel.json`), dan `index.html`, `admin.html`, `assets/**` ikut dibundel ke fungsi. — ⬜
+- **DEP-2** Semua rute diarahkan ke `api/index.js` (`vercel.json`), dan semua berkas di `web/` (`index.html`, `admin.html`, `assets/`; satu pola `web/**`, pola dengan kurung kurawal diduga gagal terbundel, jadi dihindari) ikut dibundel ke fungsi. — ⬜
 - **DEP-3** Batas isi permintaan Vercel ±4,5MB. Karena itu unggah dokumen (bukti bayar PDF) dibatasi **3MB** (±4MB setelah dikodekan base64). Foto bukti bayar dan foto produk diperkecil di browser sebelum diunggah, jadi jauh di bawah batas. — ✅ `tests/api.test.js` (API-6b)
 - **DEP-4** Data awal bersifat opsional: `MONGODB_URI=… node seed.js` menyalin `data.json`, `orders.json`, `settings.json`, `uploads/`, `docs/` (format lama) ke koleksi `kv`, `products`, `orders`, `files`. Tanpa itu toko mulai kosong. — ⬜
 - **DEP-4b** `npm run cek-db` memeriksa apakah `MONGODB_URI` bisa dipakai, tanpa menjalankan server, dan hanya menampilkan host (tidak pernah password). Menjelaskan penyebab yang umum bila gagal. — ✅ jalur gagal diuji (alamat tidak terjangkau); jalur berhasil ⬜ (butuh MongoDB sungguhan)

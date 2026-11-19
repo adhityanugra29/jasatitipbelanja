@@ -19,6 +19,8 @@ Spesifikasi di folder ini adalah **sumber kebenaran**. Kode mengikuti spesifikas
 | ⬜ | Belum diuji. Kode mungkin sudah ada. |
 | 🚫 | Ditunda atau belum diputuskan. |
 
+Berkas halaman (`index.html`, `admin.html`, `assets/`) ada di folder `web/`; nama berkas di spec tanpa awalan itu.
+
 ## Cara menguji
 
 - **Aturan API** (`00-api.md`): `BASE=http://localhost:3000 ADMIN_PASSWORD=... node tests/api.test.js`. Tes memulihkan data aslinya, tapi tetap sebaiknya dijalankan pada server uji.
