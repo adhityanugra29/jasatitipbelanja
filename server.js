@@ -62,7 +62,9 @@ const staticFor = url => {
   const file = PAGES[url] || (/^\/assets\/[\w.-]+$/.test(url) &&"public/assets/" + path.basename(url));
   if (!file) return null;
   if (!STATIC[file]) { // gagal baca = lempar galat (jadi jawaban 400 berisi pesan), bukan menghentikan fungsi
-    let buf; try { buf = fs.readFileSync(path.join(DIR, file)); } catch (e) { if (e.code === "ENOENT" && file.startsWith("public/assets/")) return null; throw e; }
+    // jalur literal path.join(__dirname, "public", ...) supaya Vercel (nft) ikut membundel berkasnya ke fungsi mana pun; includeFiles terbukti tidak cukup
+    const read = { "public/index.html": () => fs.readFileSync(path.join(__dirname, "public", "index.html")), "public/admin.html": () => fs.readFileSync(path.join(__dirname, "public", "admin.html")) }[file] || (() => fs.readFileSync(path.join(__dirname, "public", "assets", path.basename(file))));
+    let buf; try { buf = read(); } catch (e) { if (e.code === "ENOENT" && file.startsWith("public/assets/")) return null; throw e; }
     STATIC[file] = { buf, gz: path.extname(file) === ".html" ? zlib.gzipSync(buf) : null, type: typeOf(file), cache: file.startsWith("public/assets/") ? "public, max-age=86400" : "public, max-age=0, must-revalidate", etag: '"' + crypto.createHash("sha1").update(buf).digest("hex").slice(0, 16) + '"' };
   }
   return STATIC[file];
