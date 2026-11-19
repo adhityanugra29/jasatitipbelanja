@@ -27,6 +27,7 @@ Format: tanggal, keputusan, alasan. Yang masih terbuka ada di bagian bawah.
 
 - **2026-11-18 — Daftar di admin (Katalog, Invoice, Pengiriman, Pelanggan, Pesanan Masuk) memakai halaman bernomor, maksimal 10 baris per halaman.** Toko pelanggan tetap gulir tak terbatas. *Alasan:* permintaan pemilik toko; membalik keputusan 2026-11-03 hanya untuk admin. Spec: [09](09-paginasi-admin.md).
 - **2026-11-19 — Performa dan skala: cache foto selamanya, gzip, foto mini 400px, barang dan invoice masing-masing satu dokumen MongoDB, toko memuat barang per halaman dari server, tanpa migrasi data.** Perubahan perilaku: perubahan admin tampil di toko paling lama ±30 detik (cache CDN). *Alasan:* permintaan pemilik toko agar situs tidak melambat saat foto dan data banyak; situs belum dipakai sehingga aman diubah besar. Spec: [10](10-performa.md).
+- **2026-11-19 — Admin memuat semua daftar per halaman dari server (specs/11-paginasi-server.md): Invoice, Pengiriman, Pelanggan, Pesanan Masuk, Katalog. `GET /api/orders` (semua invoice) dihapus.** *Alasan:* pemilik bertanya kenapa admin masih mengunduh semua invoice; dengan ribuan invoice login dan tiap menu jadi berat (±9MB untuk 20.000 invoice). *Dampak:* pilihan "+ Tambah barang dari katalog" di jendela Cocokkan jadi kolom ketik dengan saran; `PUT /api/data` menerima `rename` kategori. Disetujui pemilik, Katalog ikut.
 
 ## Terbuka (belum diputuskan)
 

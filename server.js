@@ -136,6 +136,40 @@ function cleanOrder(o, id) {
   return out;
 }
 
+// ---------- daftar admin per halaman (specs/11-paginasi-server.md): server menyaring, mengurutkan, menghitung, memotong
+const pg = (sp, per = 10) => { const n = Math.min(50, Math.max(1, parseInt(sp.get("per")) || per)); return { n, skip: (Math.max(1, parseInt(sp.get("page")) || 1) - 1) * n }; };
+const qOf = sp => (sp.get("q") || "").trim().slice(0, 60);
+const monthOf = sp => /^\d{4}-\d{2}$/.test(sp.get("month")) ? sp.get("month") : "";
+const rxf = (s, ...fields) => ({ $or: fields.map(f => ({ [f]: { $regex: rx(s), $options: "i" } })) });
+const ord = ({ _id, t, ...o }) => o;
+const lc = s => String(s || "").trim().toLowerCase();
+// PGS-2: foto mini barang katalog yang namanya cocok (nama, "nama catatan", "nama (catatan)"), hanya untuk baris di halaman ini
+// shortcut: maks 500 nama dicari sekaligus (halaman 50 baris x 50 barang tidak terjadi di praktik)
+const withPics = async rows => {
+  const keys = [...new Set(rows.flatMap(o => o.items.flatMap(i => [lc(i.name), lc(`${i.name} ${i.note}`), lc(`${i.name} (${i.note})`)])))].filter(Boolean).slice(0, 500);
+  if (!keys.length) return rows;
+  const ps = await (await col("products")).find({ name: { $regex: "^\\s*(?:" + keys.map(rx).join("|") + ")\\s*$", $options: "i" }, $or: [{ thumb: { $ne: "" } }, { img: { $ne: "" } }] }).sort({ t: -1 }).toArray();
+  const pic = i => { const ks = [lc(`${i.name} ${i.note}`), lc(`${i.name} (${i.note})`), lc(i.name)], p = ps.find(p => ks.includes(lc(p.name))); return p ? p.thumb || p.img : ""; };
+  return rows.map(o => ({ ...o, items: o.items.map(i => ({ ...i, pic: pic(i) })) }));
+};
+// PGS-3: urutan dan status pengiriman (sama dengan statusOf di admin.html); today = tanggal di zona waktu pengguna
+const shipKind = (o, today) => {
+  if (!o.shipDate) return { k: "none", rank: 3 };
+  const d = Math.round((Date.parse(today) - Date.parse(o.shipDate)) / 864e5);
+  return d > 0 ? { k: "late", rank: 0 } : d === 0 ? { k: "today", rank: 1 } : { k: "sched", rank: 2 };
+};
+const labelReady = o => !!(o.courier && o.resi && (o.shipDate || o.shipped)); // KIR-4
+// PGS-5: tahap pesanan masuk (batas 500 terbaru, PSM): sudah diinvoice = ada invoice ber-pesananKode itu
+const inboxAll = async () => {
+  const rows = await (await col("inbox")).find().sort({ created: -1 }).limit(500).toArray();
+  const done = new Set(await (await col("orders")).distinct("pesananKode", { pesananKode: { $in: rows.map(r => r._id) } }));
+  return rows.map(r => ({ ...r, stage: done.has(r._id) ? "done" : r.matched ? "match" : "new" }));
+};
+// PGS-4: pelanggan = satu nomor HP; data kontak dari invoice terbaru, total belanja hanya invoice lunas
+const PAID = { $cond: [{ $ne: ["$paidAt", ""] }, 1, 0] };
+const GROUPED = [{ $sort: { created: -1, t: -1 } }, { $group: { _id: "$phone", name: { $first: "$customer" }, city: { $first: "$city" }, address: { $first: "$address" }, last: { $first: "$created" },
+  n: { $sum: 1 }, paid: { $sum: PAID }, spent: { $sum: { $cond: [{ $ne: ["$paidAt", ""] }, "$total", 0] } } } }];
+
 const handler = async (req, res) => {
   // di Vercel req.url berisi tujuan rewrite; path asli dikirim lewat ?p= (lihat vercel.json), parameter lain ikut di query yang sama
   const sp = new URL(req.url, "http://x").searchParams;
@@ -207,7 +241,20 @@ const handler = async (req, res) => {
       await inbox.replaceOne({ _id }, { ...rest, matched: m });
       return send(res, 200, { ok: true, matched: m });
     }
-    if (GET && url === "/api/inbox") return send(res, 200, (await (await col("inbox")).find().sort({ created: -1 }).limit(500).toArray()).map(({ _id, ...r }) => ({ code: _id, ...r })));
+    if (GET && url === "/api/inbox") { // PGS-5
+      const all = await inboxAll(), tab = ["new", "match", "done"].includes(sp.get("tab")) ? sp.get("tab") : "new", q = lc(qOf(sp)), { n, skip } = pg(sp), O = await col("orders");
+      const hit = all.filter(p => p.stage === tab && (!q || [p._id, p.name, p.phone, ...(p.matched?.items || p.items).map(i => i.name)].join(" ").toLowerCase().includes(q)));
+      const items = await Promise.all(hit.slice(skip, skip + n).map(async ({ _id, stage, ...p }) => {
+        const [invoice, invCount, last] = await Promise.all([stage === "done" ? O.findOne({ pesananKode: _id }) : null, p.phone ? O.countDocuments({ phone: p.phone }) : 0,
+          p.phone ? O.find({ phone: p.phone }).sort({ created: -1, t: -1 }).limit(1).toArray() : []]);
+        return { code: _id, ...p, ...(invoice && { invoice: ord(invoice) }), invCount, ...(last[0] && { last: { city: last[0].city, address: last[0].address } }) };
+      }));
+      return send(res, 200, { items, total: hit.length, counts: { new: all.filter(p => p.stage === "new").length, match: all.filter(p => p.stage === "match").length, done: all.filter(p => p.stage === "done").length } });
+    }
+    if (GET && url === "/api/counts") { // PGS-6: angka di sidebar
+      const O = await col("orders"), [unpaid, todo, all] = await Promise.all([O.countDocuments({ paidAt: "" }), O.countDocuments({ paidAt: { $ne: "" }, shipped: "" }), inboxAll()]);
+      return send(res, 200, { unpaid, todo, newInbox: all.filter(p => p.stage === "new").length });
+    }
     if (req.method === "DELETE" && url.startsWith("/api/inbox/")) { // PSM-5: hanya pesanan yang belum punya invoice
       const code = path.basename(url);
       if (await (await col("orders")).findOne({ pesananKode: code })) return send(res, 400, { error: "Pesanan ini sudah punya invoice" });
@@ -216,9 +263,50 @@ const handler = async (req, res) => {
     }
 
     // ---------- invoice: satu dokumen per invoice (PERF-8), menyimpan satu tidak menyentuh yang lain
-    // shortcut: GET mengirim semua invoice (gzip) karena Pelanggan dan Pengiriman diturunkan dari semuanya; upgrade ke paginasi server bila >±20.000 invoice
-    if (GET && url === "/api/orders") return send(res, 200, (await (await col("orders")).find().sort({ t: -1 }).toArray()).map(({ _id, t, ...o }) => o));
+    // PGS-1: Invoice. Belum Dibayar = tanggal buat naik; Sudah Dibayar = tanggal bayar turun. Jumlah, total tagihan, dan bulan dari semua invoice (tak terpengaruh cari/bulan).
+    if (GET && url === "/api/invoices") {
+      const O = await col("orders"), { n, skip } = pg(sp), paid = sp.get("tab") === "paid", q = qOf(sp), month = monthOf(sp);
+      const f = { paidAt: paid ? { $ne: "" } : "", ...(q && rxf(q, "customer", "invoice", "city")), ...(month && { created: { $regex: "^" + month } }) };
+      const [items, total, unpaid, paidN, sum, dates] = await Promise.all([O.find(f).sort(paid ? { paidAt: -1, t: -1 } : { created: 1, t: -1 }).skip(skip).limit(n).toArray(), O.countDocuments(f),
+        O.countDocuments({ paidAt: "" }), O.countDocuments({ paidAt: { $ne: "" } }), O.aggregate([{ $match: { paidAt: "" } }, { $group: { _id: null, s: { $sum: "$total" } } }]).toArray(), O.distinct("created")]);
+      return send(res, 200, { items: await withPics(items.map(ord)), total, counts: { unpaid, paid: paidN }, unpaidSum: sum[0]?.s || 0, months: [...new Set(dates.map(d => String(d).slice(0, 7)).filter(Boolean))].sort().reverse() });
+    }
+    // PGS-3: Pengiriman. Perlu Dikirim: himpunannya kecil (sudah dibayar, belum dikirim), jadi diurutkan di sini; Sudah Dikirim: urut tanggal kirim turun dari database.
+    if (GET && url === "/api/shipping") {
+      const O = await col("orders"), { n, skip } = pg(sp), done = sp.get("tab") === "done", q = qOf(sp), month = monthOf(sp), courier = String(sp.get("courier") || "").slice(0, 40);
+      const today = /^\d{4}-\d{2}-\d{2}$/.test(sp.get("today")) ? sp.get("today") : new Date().toISOString().slice(0, 10), paid = { paidAt: { $ne: "" } };
+      const [todoAll, doneN, shipMonths, paidMonths, couriers] = await Promise.all([O.find({ ...paid, shipped: "" }).toArray(), O.countDocuments({ ...paid, shipped: { $ne: "" } }),
+        O.distinct("shipDate", { ...paid, shipDate: { $ne: "" } }), O.distinct("paidAt", { ...paid, shipDate: "" }), O.distinct("courier", paid)]);
+      const kinds = todoAll.map(o => shipKind(o, today).k), stats = Object.fromEntries(["today", "late", "sched", "none"].map(k => [k, kinds.filter(x => x === k).length]));
+      let items, total;
+      if (!done) {
+        const rows = todoAll.filter(o => (!q || [o.customer, o.invoice, o.city, o.resi].join(" ").toLowerCase().includes(q.toLowerCase())) && (!month || (o.shipDate || o.paidAt).startsWith(month)) && (!courier || o.courier === courier))
+          .sort((a, b) => (labelReady(b) - labelReady(a)) || shipKind(a, today).rank - shipKind(b, today).rank || (a.shipDate || a.paidAt).localeCompare(b.shipDate || b.paidAt) || b.t - a.t); // KIR-2: siap cetak label paling atas
+        total = rows.length; items = rows.slice(skip, skip + n);
+      } else {
+        const and = [...(q ? [rxf(q, "customer", "invoice", "city", "resi")] : []), ...(month ? [{ $or: [{ shipDate: { $regex: "^" + month } }, { shipDate: "", paidAt: { $regex: "^" + month } }] }] : [])];
+        const f = { ...paid, shipped: { $ne: "" }, ...(courier && { courier }), ...(and.length && { $and: and }) };
+        [items, total] = await Promise.all([O.find(f).sort({ shipped: -1, t: -1 }).skip(skip).limit(n).toArray(), O.countDocuments(f)]);
+      }
+      return send(res, 200, { items: await withPics(items.map(ord)), total, counts: { todo: todoAll.length, done: doneN }, stats,
+        months: [...new Set([...shipMonths, ...paidMonths].map(d => String(d).slice(0, 7)))].sort().reverse(), couriers: couriers.filter(Boolean).sort() });
+    }
+    // PGS-4: Pelanggan, dikelompokkan di server
+    if (GET && url === "/api/customers") {
+      const O = await col("orders"), { n, skip } = pg(sp), q = qOf(sp), find = q ? [{ $match: rxf(q, "name", "_id", "city") }] : [];
+      const [items, tot, st] = await Promise.all([O.aggregate([...GROUPED, ...find, { $sort: { last: -1, _id: 1 } }, { $skip: skip }, { $limit: n }]).toArray(), O.aggregate([...GROUPED, ...find, { $group: { _id: null, n: { $sum: 1 } } }]).toArray(),
+        O.aggregate([...GROUPED, { $group: { _id: null, customers: { $sum: 1 }, repeat: { $sum: { $cond: [{ $gt: ["$n", 1] }, 1, 0] } }, spent: { $sum: "$spent" } } }]).toArray()]);
+      return send(res, 200, { items: items.map(({ _id, ...c }) => ({ phone: _id, ...c })), total: tot[0]?.n || 0, stats: { customers: st[0]?.customers || 0, repeat: st[0]?.repeat || 0, spent: st[0]?.spent || 0 } });
+    }
+    const cm = /^\/api\/customers\/(\d{6,16})\/invoices$/.exec(url); // PLG-5: rincian satu pelanggan, maks 100, terbaru dulu
+    if (GET && cm) return send(res, 200, { items: (await (await col("orders")).find({ phone: cm[1] }).sort({ created: -1, t: -1 }).limit(100).toArray()).map(ord) });
+    // PGS-9: nomor berikutnya = awalan + (jumlah invoice berawalan itu + 1), INV-3
+    if (GET && url === "/api/next-invoice") {
+      const p = sp.get("prefix") || ""; if (!/^[A-Za-z0-9]{1,6}-\d{6}$/.test(p)) throw new Error("Awalan nomor tidak valid");
+      return send(res, 200, { invoice: p + String((await (await col("orders")).countDocuments({ invoice: { $regex: "^" + p } })) + 1).padStart(4, "0") });
+    }
     const om = /^\/api\/orders\/([\w.-]{1,40})$/.exec(url);
+    if (om && GET) { const o = await (await col("orders")).findOne({ _id: om[1] }); return o ? send(res, 200, ord(o)) : send(res, 404, { error: "Invoice tidak ditemukan" }); }
     if (om && req.method === "PUT") {
       const orders = await col("orders"), out = cleanOrder(await body(req, 2e5), om[1]), prev = await orders.findOne({ _id: out.id });
       if (out.pesananKode) {
@@ -245,14 +333,22 @@ const handler = async (req, res) => {
     }
 
     // ---------- katalog (admin)
-    if (GET && url === "/api/admin/catalog") { // semua barang, terbaru di atas, plus wa/pengumuman/semua kategori
-      const d = await kv("data");
-      return send(res, 200, { wa: d.wa, notice: d.notice, cats: d.cats, products: (await (await col("products")).find().sort({ t: -1 }).toArray()).map(pub) });
+    if (GET && url === "/api/admin/catalog") { // PGS-10: tanpa daftar barang; catCounts = jumlah barang per kategori
+      const d = await kv("data"), counts = await (await col("products")).aggregate([{ $group: { _id: "$cat", n: { $sum: 1 } } }]).toArray();
+      return send(res, 200, { wa: d.wa, notice: d.notice, cats: d.cats, catCounts: Object.fromEntries(counts.map(r => [r._id, r.n])) });
+    }
+    if (GET && url === "/api/admin/products") { // PGS-10: menu Katalog, 12 per halaman, terbaru dulu; count = semua barang tanpa saringan
+      const P = await col("products"), { n, skip } = pg(sp, 12), q = qOf(sp), cat = String(sp.get("cat") || "").slice(0, 40), stock = sp.get("stock");
+      const f = { ...(q && rxf(q, "name", "desc", "cat")), ...(cat && { cat }), ...(stock === "habis" && { stock: 0 }), ...(stock === "ada" && { stock: { $ne: 0 } }), ...(stock === "terbatas" && { stock: { $ne: null } }) };
+      const [items, total, count] = await Promise.all([P.find(f).sort({ t: -1 }).skip(skip).limit(n).toArray(), P.countDocuments(f), P.estimatedDocumentCount()]);
+      return send(res, 200, { items: items.map(pub), total, count });
     }
     // API-2 / SET-6/7: wa, pengumuman, daftar kategori terurut. Kategori yang dibuang tapi masih dipakai barang ditolak.
     if (req.method === "PUT" && url === "/api/data") {
       const d = await body(req), prev = await kv("data"), products = await col("products");
       const cats = uniq(d.cats ?? prev.cats, 40, 50);
+      // ubah nama kategori (SET-7): barangnya ikut pindah, jadi kategori lama tak lagi dipakai. shortcut: tukar nama dua kategori sekaligus (A<->B) tidak didukung
+      for (const [from, to] of Object.entries(d.rename && typeof d.rename === "object" ? d.rename : {})) if (prev.cats.includes(from) && cats.includes(to)) await products.updateMany({ cat: from }, { $set: { cat: to } });
       for (const c of prev.cats.filter(c => !cats.some(n => same(n, c)))) {
         const n = await products.countDocuments({ cat: c });
         if (n) return send(res, 400, { error: `Kategori "${c}" masih dipakai ${n} barang. Pindahkan barangnya dulu.` });

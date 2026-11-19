@@ -10,7 +10,7 @@ Payment gateway. Akun admin lebih dari satu. Batas percobaan login.
 
 ## Kriteria
 
-Rute publik: `GET /`, `/admin`, `/assets/*`, `/uploads/*`, `GET /api/data`, `GET /api/products`, `POST /api/inbox` (lihat [08](08-pesanan-masuk.md)). Cache dan kompresi: [10](10-performa.md). Semua `/api/*` lain butuh header `x-admin`.
+Rute publik: `GET /`, `/admin`, `/assets/*`, `/uploads/*`, `GET /api/data`, `GET /api/products`, `POST /api/inbox` (lihat [08](08-pesanan-masuk.md)). Cache dan kompresi: [10](10-performa.md). Semua `/api/*` lain butuh header `x-admin`. Daftar admin (invoice, pengiriman, pelanggan, pesanan masuk, katalog) dimuat per halaman: lihat [11](11-paginasi-server.md); tidak ada rute yang mengirim semua invoice.
 
 - **API-1** Endpoint privat menjawab 401 tanpa header `x-admin` atau dengan password salah. `GET /api/data` dan `GET /api/products` terbuka. — ✅ `tests/api.test.js`
 - **API-2** `PUT /api/products` (maks 100 barang sekali kirim, per barang) membersihkan produk: nama ≤100, harga ≥0, kategori ≤40 (kosong → "Lainnya"), keterangan ≤100, badge hanya `new|hot|flash` atau kosong, stok `null` atau bilangan bulat ≥0, gambar dan gambar mini (`thumb`) hanya `/uploads/<nama>.(jpg|png|webp)`; id barang `[w.-]{1,60}`. `PUT /api/data` (wa, pengumuman, kategori): nomor WhatsApp hanya digit, pengumuman ≤200. — ✅ `tests/api.test.js`

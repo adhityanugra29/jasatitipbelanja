@@ -345,6 +345,8 @@
   .pg.on { background:var(--pink-d); border-color:var(--pink-d); color:#fff; }
   .pg:disabled { opacity:.35; cursor:not-allowed; }
   #list, #iv-table, #otable, #pl-table, #ps-list { scroll-margin-top:72px; }
+  [aria-busy="true"] { opacity:.55; transition:opacity .15s; } /* PGS-7: memuat ulang tanpa menggeser tata letak */
+  .load { padding:24px; text-align:center; grid-column:1/-1; }
   @media (max-width:800px) { .stats { grid-template-columns:1fr 1fr; } .ofil { grid-template-columns:1fr; } }
   @media (max-width:800px) {
     #side { transform:translateX(-100%); }
@@ -556,7 +558,7 @@
   <div class="warn" id="mhint"></div>
   <div id="mlines"></div>
   <div id="mgone"></div>
-  <select id="madd" aria-label="Tambah barang dari katalog"></select>
+  <input id="madd" list="msugg" placeholder="+ Tambah barang dari katalog: ketik nama…" aria-label="Tambah barang dari katalog" autocomplete="off"><datalist id="msugg"></datalist>
   <div id="merr" style="color:#c00;margin:8px 0"></div>
   <div class="wact"><button class="b dark" id="msave">Sudah Cocok</button><button class="b" id="mcancel">Batal</button></div>
 </dialog>
@@ -611,17 +613,37 @@ async function api(method, url, body) {
   return j;
 }
 
-function render() {
+// PGS-6/7/8: daftar dimuat per halaman dari server; jawaban lama yang datang terlambat diabaikan; gagal = pesan + coba lagi
+const live = {}, reload = {};
+async function load(key, box, path, params, ok) {
+  const t = live[key] = (live[key] || 0) + 1, el = $(box); reload[key] = () => load(key, box, path, params, ok);
+  if (!el.innerHTML.trim()) el.innerHTML = `<p class="load">Memuat…</p>`;
+  el.setAttribute("aria-busy", "true");
+  try { const r = await api("GET", path + "?" + new URLSearchParams(params)); if (t === live[key]) ok(r); }
+  catch (e) { if (t === live[key]) el.innerHTML = `<p class="load">${esc(e.message)} <button class="b" data-retry="${key}">Coba lagi</button></p>`; }
+  finally { if (t === live[key]) el.removeAttribute("aria-busy"); }
+}
+const lastPage = (r, pg, per) => r.items.length === 0 && r.total > 0 && pg > 1 ? Math.ceil(r.total / per) : 0; // PAG-3: halaman terakhir kosong -> mundur
+const later = fn => { let h; return () => { clearTimeout(h); h = setTimeout(fn, 250); }; }; // PGS-8
+document.addEventListener("click", e => { const b = e.target.closest("[data-retry]"); if (b) reload[b.dataset.retry]?.(); });
+const refreshCounts = () => api("GET", "/api/counts").then(c => { $("icount").textContent = c.unpaid || ""; $("ocount").textContent = c.todo || ""; $("pcount").textContent = c.newInbox || ""; }).catch(() => {});
+let curView = "katalog";
+function reloadView() { ({ katalog: loadKatalog, pesanan: loadInbox, invoice: loadInvoices, pengiriman: loadShipping, pelanggan: loadCustomers })[curView]?.(); refreshCounts(); }
+
+// ---- Katalog (PGS-10): 12 barang per halaman dari server; data.products = barang di halaman ini saja
+let kTotal = 0;
+function loadKatalog() {
+  load("kat", "list", "/api/admin/products", { q: $("k-q").value.trim(), cat: $("k-c").value, stock: $("k-s").value, page, per: PER_KAT }, r => {
+    const fix = lastPage(r, page, PER_KAT); if (fix) { page = fix; return loadKatalog(); }
+    data.products = r.items; kTotal = r.total; $("tcount").textContent = r.count || ""; render(r.count);
+  });
+}
+function render(count = kTotal) {
   $("wa").value = data.wa; $("notice").value = data.notice || "";
-  $("tcount").textContent = data.products.length || "";
-  $("cats").innerHTML = [...new Set([...(data.cats || []), ...data.products.map(p => p.cat)].filter(Boolean))].map(c => `<option value="${esc(c)}">`).join("");
-  fillSel("k-c", "Semua kategori", [...new Set(data.products.map(p => p.cat).filter(Boolean))].sort().map(c => [c, c]));
-  const q = $("k-q").value.toLowerCase(), kc = $("k-c").value, ks = $("k-s").value;
-  // KAT-14: indeks global ikut dibawa, supaya Edit/Hapus menunjuk barang yang benar walau daftar terfilter (PAG-4)
-  const list = data.products.map((p, gi) => [p, gi]).filter(([p]) => (!q || [p.name, p.desc, p.cat].join(" ").toLowerCase().includes(q)) && (!kc || p.cat === kc)
-    && (!ks || (ks === "habis" ? p.stock === 0 : ks === "ada" ? p.stock !== 0 : p.stock != null)));
-  page = clampPage(page, list.length, PER_KAT);
-  $("list").innerHTML = `<div class="cards">` + list.slice((page - 1) * PER_KAT, page * PER_KAT).map(([p, gi]) => { return `
+  $("cats").innerHTML = (data.cats || []).map(c => `<option value="${esc(c)}">`).join("");
+  fillSel("k-c", "Semua kategori", (data.cats || []).map(c => [c, c]));
+  const list = data.products.map((p, gi) => [p, gi]); // gi = urutan di halaman ini (KAT-14)
+  $("list").innerHTML = `<div class="cards">` + list.map(([p, gi]) => { return `
     <div class="pc">
       ${p.img ? `<img src="${esc(p.thumb || p.img)}" alt="" loading="lazy" decoding="async">` : `<div class="ph">🛍️</div>`}
       <h3>${esc(p.name || "(tanpa nama)")}</h3>${p.badge ? `<span class="chip bdg ${p.badge}">${BADGE_LABEL[p.badge]}</span>` : ""}
@@ -629,8 +651,8 @@ function render() {
       <div class="price">Rp${(p.price || 0).toLocaleString("id-ID")}</div>
       <div class="st ${p.stock === 0 ? "out" : ""}">${p.stock == null ? "Stok tidak terbatas" : p.stock > 0 ? "Sisa " + p.stock : "Stok habis"}</div>
       <div class="acts"><button class="b" data-edit="${gi}">Edit</button><button class="b del" data-del="${gi}">Hapus</button></div>
-    </div>`; }).join("") + `</div>` + pagerHtml("kat", page, list.length, PER_KAT);
-  if (!list.length) $("list").innerHTML = `<p style="padding:24px;text-align:center">${data.products.length ? "Tidak ada barang yang cocok." : "Belum ada barang. Klik “+ Tambah Barang”."}</p>`;
+    </div>`; }).join("") + `</div>` + pagerHtml("kat", page, kTotal, PER_KAT);
+  if (!list.length) $("list").innerHTML = `<p style="padding:24px;text-align:center">${count ? "Tidak ada barang yang cocok." : "Belum ada barang. Klik “+ Tambah Barang”."}</p>`;
 }
 
 function renderForm(i) {
@@ -685,9 +707,9 @@ $("go").onclick = async () => {
   $("go").disabled = true; $("loading").hidden = false;
   try {
     await api("GET", "/api/check");
-    data = await api("GET", "/api/admin/catalog");
-    orders = await api("GET", "/api/orders"); inbox = await api("GET", "/api/inbox"); settings = await api("GET", "/api/settings"); fillCfg(); courDatalist(); renderAll();
-    $("login").hidden = true; $("app").hidden = false; render();
+    data = { ...(await api("GET", "/api/admin/catalog")), products: [] };
+    settings = await api("GET", "/api/settings"); fillCfg(); courDatalist(); // PGS-6: tidak ada daftar yang diunduh selain halaman pertama menu yang dibuka
+    $("login").hidden = true; $("app").hidden = false; reloadView();
   } catch (e) { $("err").textContent = e.message; }
   finally { $("go").disabled = false; $("loading").hidden = true; }
 };
@@ -700,11 +722,9 @@ $("scrim").onclick = () => $("side").classList.remove("open"); // ketuk area gel
 function showView(v) {
   for (const x of ["katalog", "bulk", "pesanan", "invoice", "pengiriman", "pelanggan", "pengaturan"]) $("v-" + x).hidden = x !== v;
   document.querySelectorAll("[data-view]").forEach(x => x.classList.toggle("on", x.dataset.view === (v === "bulk" ? "katalog" : v)));
-  $("side").classList.remove("open"); say("");
-  if (v === "bulk") wz();
-  if (v === "pengaturan") fillCfg(); // kategori baru dari Tambah Produk ikut tampil; draf lama dibuang
-  if (v === "pesanan") api("GET", "/api/inbox").then(r => { inbox = r; renderInbox(); }).catch(e => say(e.message, true));
-  if (v === "invoice" || v === "pengiriman" || v === "pelanggan" || v === "pesanan") renderAll();
+  $("side").classList.remove("open"); say(""); curView = v;
+  if (v === "bulk") wz(); else reloadView(); // tiap menu memuat ulang halamannya dari server (PGS-7)
+  if (v === "pengaturan") api("GET", "/api/admin/catalog").then(c => { Object.assign(data, c); fillCfg(); }).catch(e => say(e.message, true)); // kategori baru dan jumlah pemakaian terbaru; draf lama dibuang
 }
 document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => showView(b.dataset.view));
 $("wback").onclick = () => showView("katalog");
@@ -726,7 +746,7 @@ let editing = -1, editBackup = null;
 const cancelEdit = () => { data.products[editing] = editBackup; $("edlg").close(); render(); }; // batal = buang perubahan
 $("edone").onclick = async () => {
   if (!data.products[editing].name.trim()) return void ($("eerr").textContent = "Nama barang wajib diisi.");
-  if (await saveCatalog("✅ Barang tersimpan.", [data.products[editing]])) { $("edlg").close(); render(); }
+  if (await saveCatalog("✅ Barang tersimpan.", [data.products[editing]])) { $("edlg").close(); loadKatalog(); }
 };
 $("ecancel").onclick = cancelEdit;
 $("edlg").addEventListener("cancel", e => { e.preventDefault(); cancelEdit(); }); // tombol Esc
@@ -738,8 +758,8 @@ document.addEventListener("click", async e => {
   }
   if (e.target.dataset.del === undefined) return;
   if (!confirm("Hapus barang ini?")) return;
-  const [gone] = data.products.splice(e.target.dataset.del, 1); render();
-  try { await api("DELETE", "/api/products/" + encodeURIComponent(gone.id)); say("✅ Barang dihapus."); } catch (err) { say(err.message, true); }
+  try { await api("DELETE", "/api/products/" + encodeURIComponent(data.products[e.target.dataset.del].id)); say("✅ Barang dihapus."); } catch (err) { say(err.message, true); }
+  loadKatalog(); refreshCounts();
 });
 
 document.addEventListener("change", async e => {
@@ -775,10 +795,10 @@ const DEF_CLOSING = "Terima kasih telah mempercayakan belanja Anda kepada kami."
 let settings = {};
 // SET-6..8: daftar kategori dan kurir diedit sebagai draf, baru berlaku saat Simpan Pengaturan
 let catRows = [], courRows = []; // kategori: {orig, name}; kurir: {name, on}
-const usedBy = c => data.products.filter(p => p.cat === c).length;
+const usedBy = c => data.catCounts?.[c] || 0;
 const fillCfg = () => {
   CFG.forEach(k => { $("cfg-" + k).value = settings[k] || ""; });
-  catRows = (data.cats?.length ? data.cats : [...new Set(data.products.map(p => p.cat).filter(Boolean))]).map(c => ({ orig: c, name: c }));
+  catRows = (data.cats || []).map(c => ({ orig: c, name: c }));
   courRows = (settings.couriers || []).map(c => ({ name: c.name }));
   renderCfgRows(); renderIpv();
 };
@@ -841,13 +861,16 @@ $("save").onclick = async () => { // hanya di halaman Pengaturan
   const err0 = bad(catRows, "kategori") || bad(courRows, "kurir"); if (err0) return say(err0, true);
   grab();
   // ubah nama kategori ikut mengubah barangnya (SET-7)
-  const moved = [];
-  catRows.forEach(r => { const n = r.name.trim(); if (r.orig && r.orig !== n) data.products.forEach(p => { if (p.cat === r.orig) { p.cat = n; moved.push(p); } }); r.orig = n; r.name = n; });
+  const rename = {}; // server memindahkan semua barangnya (PGS-10); browser tidak memegang seluruh katalog
+  catRows.forEach(r => { const n = r.name.trim(); if (r.orig && r.orig !== n) rename[r.orig] = n; r.orig = n; r.name = n; });
   data.cats = catRows.map(r => r.name);
   settings = { ...settings, ...Object.fromEntries(CFG.map(k => [k, $("cfg-" + k).value.trim()])), couriers: courRows.map(c => ({ name: c.name.trim(), on: true })) }; // rekening tetap dari server
   try { await api("PUT", "/api/settings", settings); } catch (err) { return say(err.message, true); }
   courDatalist();
-  if (await saveCatalog("✅ Pengaturan tersimpan.", moved, true)) render();
+  try {
+    data.cats = (await api("PUT", "/api/data", { wa: data.wa, notice: data.notice, cats: data.cats, rename })).cats;
+    Object.assign(data, await api("GET", "/api/admin/catalog")); say("✅ Pengaturan tersimpan.");
+  } catch (err) { say(err.message, true); }
 };
 
 // ===== tambah banyak produk: 1 pilih foto, 2 isi data, 3 selesai =====
@@ -942,9 +965,8 @@ async function wzSave() {
   const np = { id: x.id, name: v("wn"), desc: v("wd"), price: money(v("wp")), cat: v("wc") || "Lainnya", stock: v("ws") === "" ? null : Number(v("ws")), badge: $("wb").value, img: x.img, thumb: x.thumb };
   try { data.cats = (await api("PUT", "/api/products", [np])).cats; }
   catch (e) { return fail(e.message); }
-  data.products.unshift(np);
   x.status = "saved"; W.cat = v("wc"); W.added++;
-  page = 1; render(); settle(); wz();
+  page = 1; settle(); wz(); // Katalog dimuat ulang dari server saat dibuka lagi
 }
 
 $("wz").addEventListener("click", e => {
@@ -966,15 +988,15 @@ document.addEventListener("keydown", e => { if (e.ctrlKey && e.key === "Enter" &
 
 // ===== invoice & pengiriman =====
 // alur: invoice dibuat (belum dibayar) -> bukti bayar diunggah -> otomatis masuk Pengiriman -> dikirim (kurir + resi)
-let orders = [], iTab = "unpaid", iPage = 1, oTab = "todo", oPage = 1, cur = null;
+let iTab = "unpaid", iPage = 1, oTab = "todo", oPage = 1, cur = null;
+const known = new Map(); // invoice yang pernah dimuat (id -> baris), untuk tombol di daftar; selalu versi terakhir dari server
+const keep = rows => rows.forEach(o => known.set(o.id, o));
 const today = () => new Date().toLocaleDateString("sv");
 const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
 const dfmt = d => d ? new Date(d + "T00:00").toLocaleDateString("id-ID", { day: "numeric", month: "short" }) : "-";
 const rpf = n => "Rp" + (n || 0).toLocaleString("id-ID");
 const newId = () => Date.now() + "-" + Math.random().toString(36).slice(2, 6);
-const renderAll = () => { renderInvoices(); renderOrders(); renderCustomers(); renderInbox(); };
 // PAG-2: kontrol halaman (jendela 5 angka); tidak tampil bila datanya <= PER
-const clampPage = (pg, total, per = PER) => Math.min(Math.max(1, pg), Math.max(1, Math.ceil(total / per)));
 function pagerHtml(key, pg, total, per = PER) {
   const pages = Math.ceil(total / per); if (pages <= 1) return "";
   const lo = Math.max(1, Math.min(pg - 2, pages - 4)), hi = Math.min(pages, lo + 4);
@@ -985,8 +1007,8 @@ function pagerHtml(key, pg, total, per = PER) {
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-pg]"); if (!b || b.disabled) return;
   const k = b.dataset.pg, to = +b.dataset.to;
-  if (k === "kat") { page = to; render(); } else if (k === "inv") { iPage = to; renderInvoices(); } else if (k === "ship") { oPage = to; renderOrders(); }
-  else if (k === "cust") { cPage = to; renderCustomers(); } else if (k === "inbox") { pPage = to; renderInbox(); }
+  if (k === "kat") { page = to; loadKatalog(); } else if (k === "inv") { iPage = to; loadInvoices(); } else if (k === "ship") { oPage = to; loadShipping(); }
+  else if (k === "cust") { cPage = to; loadCustomers(); } else if (k === "inbox") { pPage = to; loadInbox(); }
   $({ kat: "list", inv: "iv-table", ship: "otable", cust: "pl-table", inbox: "ps-list" }[k]).scrollIntoView({ block: "start" }); // PAG-4
 });
 const monthOpts = ms => [...new Set(ms.filter(Boolean))].sort().reverse().map(m => [m, new Date(m + "-01T00:00").toLocaleDateString("id-ID", { month: "long", year: "numeric" })]);
@@ -1016,26 +1038,27 @@ function fillSel(id, first, opts) {
 }
 
 // ---- Invoice
+let iData = null; // jawaban server terakhir untuk menu Invoice
+function loadInvoices() { // PGS-1
+  load("inv", "iv-table", "/api/invoices", { tab: iTab, q: $("iv-q").value.trim(), month: $("iv-m").value, page: iPage, per: PER }, r => {
+    const fix = lastPage(r, iPage, PER); if (fix) { iPage = fix; return loadInvoices(); }
+    keep(r.items); iData = r; renderInvoices();
+  });
+}
 function renderInvoices() {
-  const unpaid = orders.filter(o => !o.paidAt), paid = orders.filter(o => o.paidAt);
-  $("icount").textContent = unpaid.length || "";
-  $("iv-stats").innerHTML = stat("BELUM DIBAYAR", unpaid.length, "#c00") + stat("TAGIHAN BELUM DIBAYAR", rpf(unpaid.reduce((s, o) => s + o.total, 0))) + stat("SUDAH DIBAYAR", paid.length, "#1c6b32");
-  $("iv-tabs").innerHTML = tabs(iTab, [["unpaid", "Belum Dibayar", unpaid.length], ["paid", "Sudah Dibayar", paid.length]], "itab");
-  fillSel("iv-m", "Semua bulan", monthOpts(orders.map(o => o.created.slice(0, 7))));
-  const q = $("iv-q").value.toLowerCase(), m = $("iv-m").value;
-  const list = (iTab === "unpaid" ? unpaid : paid)
-    .filter(o => (!q || [o.customer, o.invoice, o.city].join(" ").toLowerCase().includes(q)) && (!m || o.created.slice(0, 7) === m))
-    .sort((a, b) => iTab === "paid" ? b.paidAt.localeCompare(a.paidAt) : a.created.localeCompare(b.created));
-  iPage = clampPage(iPage, list.length);
+  const { items: list, total, counts, unpaidSum } = iData;
+  $("iv-stats").innerHTML = stat("BELUM DIBAYAR", counts.unpaid, "#c00") + stat("TAGIHAN BELUM DIBAYAR", rpf(unpaidSum)) + stat("SUDAH DIBAYAR", counts.paid, "#1c6b32");
+  $("iv-tabs").innerHTML = tabs(iTab, [["unpaid", "Belum Dibayar", counts.unpaid], ["paid", "Sudah Dibayar", counts.paid]], "itab");
+  fillSel("iv-m", "Semua bulan", monthOpts(iData.months));
   const btn = (a, o, label, cls = "sm") => `<button class="b ${cls}" data-ia="${a}" data-oid="${esc(o.id)}">${label}</button>`;
   document.querySelectorAll("[data-iview]").forEach(b => b.classList.toggle("on", b.dataset.iview === iView));
   const no = o => `<button class="linkbtn2" data-ia="view" data-oid="${esc(o.id)}">${esc(o.invoice)}</button>`;
   const status = o => o.paidAt ? `<span class="pay lunas">LUNAS</span>` : `<span class="pay belum">BELUM BAYAR</span>`;
   const kirim = o => o.paidAt ? `${dfmt(o.paidAt)} · ${o.shipped ? "Sudah dikirim" : "Menunggu kirim"}` : "";
   const acts = o => `<div class="oact">${o.paidAt ? "" : btn("pay", o, "Tandai Sudah Bayar", "dark")}${dots("inv", o)}</div>`;
-  const shown = list.slice((iPage - 1) * PER, iPage * PER);
+  const shown = list;
   // INV-11 Daftar / INV-12 Gambar
-  $("iv-table").innerHTML = !list.length ? `<p style="padding:24px;text-align:center">${orders.length ? "Tidak ada invoice yang cocok." : "Belum ada invoice. Klik “+ Buat Invoice”."}</p>`
+  $("iv-table").innerHTML = !list.length ? `<p style="padding:24px;text-align:center">${counts.unpaid + counts.paid ? "Tidak ada invoice yang cocok." : "Belum ada invoice. Klik “+ Buat Invoice”."}</p>`
     : iView === "list" ? `<div class="ivlist">${shown.map(o => `<div class="ivrow ${o.paidAt ? "paid" : ""}">
         <div>${no(o)}<br><small>${dfmt(o.created)}</small></div>
         <div><b>${esc(o.customer)}</b> <small>· ${esc(o.city || "-")}</small><div class="ivtx">${esc(itemsText(o).replace(/\n/g, ", "))}</div></div>
@@ -1049,53 +1072,49 @@ function renderInvoices() {
           <b>${rpf(i.qty * i.price - (i.discount || 0))}</b></li>`).join("")}</ul>
         ${o.shipping ? `<div class="ivsum">+ Ongkir ${rpf(o.shipping)}</div>` : ""}
         <div class="ivfoot"><b>${rpf(o.total)}</b>${acts(o)}</div></div>`).join("")}</div>`;
-  $("iv-table").insertAdjacentHTML("beforeend", pagerHtml("inv", iPage, list.length));
+  $("iv-table").insertAdjacentHTML("beforeend", pagerHtml("inv", iPage, total));
 }
-// foto barang dari katalog, dicocokkan lewat nama (pesanan tidak menyimpan id produk); dipakai juga oleh formulir pengiriman
-// shortcut: cocok hanya bila nama persis sama (nama, atau nama + catatan); tak cocok = ikon 🛍️
-const picOf = i => { const k = s => (s || "").trim().toLowerCase(), n = k(i.name), nn = k(`${i.name} ${i.note}`), nb = k(`${i.name} (${i.note})`);
-  const p = data.products.find(p => [nn, nb, n].includes(k(p.name)) && (p.thumb || p.img)); return p && (p.thumb || p.img); };
+// foto barang katalog: dicocokkan server lewat nama (pesanan tidak menyimpan id produk), dibawa di tiap barang sebagai pic (PGS-2). Tak cocok = ikon 🛍️
+const picOf = i => i.pic;
 let iView = "list"; try { iView = localStorage.getItem("invView") === "img" ? "img" : "list"; } catch { } // INV-13
 
 // ---- Pelanggan (PLG-*): diturunkan dari invoice, satu pelanggan = satu nomor HP; tidak ada data baru disimpan
-let plOpen = "", cPage = 1;
-function customers() {
-  const m = new Map();
-  for (const o of [...orders].sort((a, b) => b.created.localeCompare(a.created))) { // terbaru dulu: data kontak = invoice terbaru
-    const c = m.get(o.phone) || { phone: o.phone, name: o.customer, city: o.city, address: o.address, last: o.created, inv: [], spent: 0 };
-    c.inv.push(o); if (o.paidAt) c.spent += o.total;
-    m.set(o.phone, c);
-  }
-  return [...m.values()];
+let plOpen = "", cPage = 1, cData = null, plInv = {}; // plInv: rincian invoice per nomor HP, diambil saat baris dibuka
+function loadCustomers() { // PGS-4
+  load("cust", "pl-table", "/api/customers", { q: $("pl-q").value.trim(), page: cPage, per: PER }, r => {
+    const fix = lastPage(r, cPage, PER); if (fix) { cPage = fix; return loadCustomers(); }
+    cData = r; plInv = {}; if (plOpen) api("GET", `/api/customers/${plOpen}/invoices`).then(x => { plInv[plOpen] = x.items; keep(x.items); renderCustomers(); }).catch(() => {});
+    renderCustomers();
+  });
 }
 function renderCustomers() {
-  const all = customers(), q = $("pl-q").value.toLowerCase();
-  $("pl-stats").innerHTML = stat("PELANGGAN", all.length) + stat("PELANGGAN ULANG (≥2 INVOICE)", all.filter(c => c.inv.length > 1).length) + stat("TOTAL BELANJA (LUNAS)", rpf(all.reduce((s, c) => s + c.spent, 0)), "var(--teal-d)");
-  const list = all.filter(c => !q || [c.name, c.phone, c.city].join(" ").toLowerCase().includes(q));
-  cPage = clampPage(cPage, list.length);
-  $("pl-table").innerHTML = list.length ? list.slice((cPage - 1) * PER, cPage * PER).map(c => `<div class="plc ${plOpen === c.phone ? "open" : ""}">
+  const { items: list, total, stats } = cData;
+  $("pl-stats").innerHTML = stat("PELANGGAN", stats.customers) + stat("PELANGGAN ULANG (≥2 INVOICE)", stats.repeat) + stat("TOTAL BELANJA (LUNAS)", rpf(stats.spent), "var(--teal-d)");
+  $("pl-table").innerHTML = list.length ? list.map(c => `<div class="plc ${plOpen === c.phone ? "open" : ""}">
       <div class="plh"><span class="av">${esc(ini(c.name))}</span>
         <div class="plm"><b>${esc(c.name)}</b><small>${esc(c.city || "-")} · ${esc(c.phone)}</small></div>
         <a class="wa" target="_blank" rel="noopener" href="https://wa.me/62${esc(c.phone.slice(1))}" aria-label="WhatsApp" title="Chat WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg></a></div>
-      <div class="pls"><div><small>INVOICE</small><button class="plt" data-pl="${esc(c.phone)}" aria-expanded="${plOpen === c.phone}" title="Lihat daftar invoice">${(n => `${n ? `<span class="pay lunas">${n} lunas</span> ` : ""}${c.inv.length - n ? `<span class="pay belum">${c.inv.length - n} belum bayar</span>` : ""}`)(c.inv.filter(o => o.paidAt).length)}<i>${plOpen === c.phone ? "▴" : "▾"}</i></button></div><div><small>TOTAL LUNAS</small><b class="${c.spent ? "" : "mut"}">${rpf(c.spent)}</b></div><div><small>TERAKHIR</small><b>${dfmt(c.last)}</b></div></div>${
-      plOpen === c.phone ? `<div class="pld"><small>${esc(c.address)}</small>${c.inv.map(o => `<div class="plr"><button class="linkbtn2" data-ia="view" data-oid="${esc(o.id)}">${esc(o.invoice)}</button><span>${dfmt(o.created)} · ${rpf(o.total)}</span><span class="pay ${o.paidAt ? "lunas" : "belum"}">${o.paidAt ? "LUNAS" : "BELUM BAYAR"}</span></div>`).join("")}</div>` : ""}</div>`).join("")
-    : `<p style="padding:24px;text-align:center">${all.length ? "Tidak ada pelanggan yang cocok." : "Belum ada pelanggan"}</p>`;
-  $("pl-table").insertAdjacentHTML("beforeend", pagerHtml("cust", cPage, list.length));
+      <div class="pls"><div><small>INVOICE</small><button class="plt" data-pl="${esc(c.phone)}" aria-expanded="${plOpen === c.phone}" title="Lihat daftar invoice">${`${c.paid ? `<span class="pay lunas">${c.paid} lunas</span> ` : ""}${c.n - c.paid ? `<span class="pay belum">${c.n - c.paid} belum bayar</span>` : ""}`}<i>${plOpen === c.phone ? "▴" : "▾"}</i></button></div><div><small>TOTAL LUNAS</small><b class="${c.spent ? "" : "mut"}">${rpf(c.spent)}</b></div><div><small>TERAKHIR</small><b>${dfmt(c.last)}</b></div></div>${
+      plOpen === c.phone ? `<div class="pld"><small>${esc(c.address)}</small>${plInv[c.phone] ? plInv[c.phone].map(o => `<div class="plr"><button class="linkbtn2" data-ia="view" data-oid="${esc(o.id)}">${esc(o.invoice)}</button><span>${dfmt(o.created)} · ${rpf(o.total)}</span><span class="pay ${o.paidAt ? "lunas" : "belum"}">${o.paidAt ? "LUNAS" : "BELUM BAYAR"}</span></div>`).join("") : `<p class="mut">Memuat…</p>`}</div>` : ""}</div>`).join("")
+    : `<p style="padding:24px;text-align:center">${stats.customers ? "Tidak ada pelanggan yang cocok." : "Belum ada pelanggan"}</p>`;
+  $("pl-table").insertAdjacentHTML("beforeend", pagerHtml("cust", cPage, total));
 }
-$("k-q").oninput = () => { page = 1; render(); }; // PAG-3
-["k-c", "k-s"].forEach(id => $(id).onchange = () => { page = 1; render(); });
-$("pl-q").oninput = () => { cPage = 1; renderCustomers(); }; // PAG-3
-$("pl-table").addEventListener("click", e => {
+const kSearch = later(() => { page = 1; loadKatalog(); }); // PAG-3, PGS-8
+$("k-q").oninput = kSearch; ["k-c", "k-s"].forEach(id => $(id).onchange = kSearch);
+$("pl-q").oninput = later(() => { cPage = 1; loadCustomers(); });
+$("pl-table").addEventListener("click", async e => {
   const b = e.target.closest("button"); if (!b) return;
-  if (b.dataset.pl) { plOpen = plOpen === b.dataset.pl ? "" : b.dataset.pl; renderCustomers(); }
-  const o = b.dataset.ia && orders.find(x => x.id === b.dataset.oid); // PLG-5: nomor invoice membuka invoice
+  if (b.dataset.pl) { // PLG-5: rincian invoice diambil saat barisnya dibuka
+    plOpen = plOpen === b.dataset.pl ? "" : b.dataset.pl; renderCustomers();
+    if (plOpen && !plInv[plOpen]) try { const ph = plOpen; plInv[ph] = (await api("GET", `/api/customers/${ph}/invoices`)).items; keep(plInv[ph]); renderCustomers(); } catch (err) { say(err.message, true); }
+  }
+  const o = b.dataset.ia && known.get(b.dataset.oid); // PLG-5: nomor invoice membuka invoice
   if (o) openInvoiceView(o);
 });
 
 // ---- Pesanan Masuk (PSM-*): dicatat saat pelanggan menekan tombol WhatsApp. "Sudah diinvoice" diturunkan dari invoice (pesananKode), tidak disimpan terpisah.
-let inbox = [], pTab = "new", pFrom = null, pPage = 1;
-const invoiceOf = p => orders.find(o => o.pesananKode === p.code);
-const lastOf = phone => phone ? [...orders].filter(o => o.phone === phone).sort((a, b) => b.created.localeCompare(a.created))[0] : undefined; // invoice terakhir nomor HP ini
+let pData = null, pTab = "new", pFrom = null, pPage = 1;
+const invoiceOf = p => p.invoice; // dari server: invoice ber-pesananKode ini (PGS-5)
 const dtime = d => new Date(d).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 // PSM-7: dibandingkan per nama barang (qty dijumlahkan); harga sengaja tidak dibandingkan
 function compare(pItems, iItems) {
@@ -1109,27 +1128,28 @@ function compare(pItems, iItems) {
 const itemsOf = p => p.matched?.items || p.items; // hasil pencocokan bila ada, kalau tidak pesanan website
 const stageOf = p => invoiceOf(p) ? "done" : p.matched ? "match" : "new";
 const qtyKey = a => JSON.stringify(a.map(i => [i.id, i.qty]).sort());
+function loadInbox() {
+  load("inbox", "ps-list", "/api/inbox", { tab: pTab, q: $("ps-q").value.trim(), page: pPage, per: PER }, r => {
+    const fix = lastPage(r, pPage, PER); if (fix) { pPage = fix; return loadInbox(); }
+    pData = r; renderInbox();
+  });
+}
 function renderInbox() {
-  const by = { new: [], match: [], done: [] };
-  inbox.forEach(p => by[stageOf(p)].push(p));
-  $("pcount").textContent = by.new.length || "";
-  $("ps-stats").innerHTML = stat("BARU (PERLU DICOCOKKAN)", by.new.length, "#c00") + stat("SUDAH DICOCOKKAN", by.match.length) + stat("SUDAH DIINVOICE", by.done.length, "#1c6b32");
-  $("ps-tabs").innerHTML = tabs(pTab, [["new", "Baru", by.new.length], ["match", "Sudah Dicocokkan", by.match.length], ["done", "Sudah Diinvoice", by.done.length]], "ptab");
-  const q = $("ps-q").value.toLowerCase();
-  const list = by[pTab].filter(p => !q || ([p.code, p.name, p.phone, ...itemsOf(p).map(i => i.name)].join(" ")).toLowerCase().includes(q));
-  pPage = clampPage(pPage, list.length);
-  $("ps-list").innerHTML = !list.length ? `<p style="padding:24px;text-align:center">${inbox.length ? "Tidak ada pesanan di sini." : "Belum ada pesanan masuk. Pesanan muncul saat pelanggan menekan “Pesan via WhatsApp”."}</p>`
-    : `<div class="ivlist">${list.slice((pPage - 1) * PER, pPage * PER).map(p => { const iv = invoiceOf(p), its = itemsOf(p), bad = iv && compare(its, iv.items).some(r => r.st), c = esc(p.code),
+  const { items: list, total, counts: by } = pData;
+  $("ps-stats").innerHTML = stat("BARU (PERLU DICOCOKKAN)", by.new, "#c00") + stat("SUDAH DICOCOKKAN", by.match) + stat("SUDAH DIINVOICE", by.done, "#1c6b32");
+  $("ps-tabs").innerHTML = tabs(pTab, [["new", "Baru", by.new], ["match", "Sudah Dicocokkan", by.match], ["done", "Sudah Diinvoice", by.done]], "ptab");
+  $("ps-list").innerHTML = !list.length ? `<p style="padding:24px;text-align:center">${by.new + by.match + by.done ? "Tidak ada pesanan di sini." : "Belum ada pesanan masuk. Pesanan muncul saat pelanggan menekan “Pesan via WhatsApp”."}</p>`
+    : `<div class="ivlist">${list.map(p => { const iv = invoiceOf(p), its = itemsOf(p), bad = iv && compare(its, iv.items).some(r => r.st), c = esc(p.code),
       fixed = p.matched && qtyKey(its) !== qtyKey(p.items);
       return `<div class="ivrow psrow ${stageOf(p) === "new" ? "" : "paid"}">
         <div><b>${c}</b><br><small>${dtime(p.created)}</small></div>
-        <div>${p.name ? `<b>${esc(p.name)}</b> <small>· ${esc(p.phone)}</small>${lastOf(p.phone) ? ` <span class="pay lunas">PELANGGAN LAMA · ${orders.filter(o => o.phone === p.phone).length} invoice</span>` : ""}` : ""}${fixed ? ` <span class="pay dp">DIKOREKSI</span>` : ""}
+        <div>${p.name ? `<b>${esc(p.name)}</b> <small>· ${esc(p.phone)}</small>${p.invCount ? ` <span class="pay lunas">PELANGGAN LAMA · ${p.invCount} invoice</span>` : ""}` : ""}${fixed ? ` <span class="pay dp">DIKOREKSI</span>` : ""}
           <div class="ivtx">${esc(its.map(i => `${i.name} ×${i.qty}`).join(", "))}</div></div>
         <div class="ivtot"><b>${rpf(its.reduce((s, i) => s + i.qty * i.price, 0))}</b><br><small>${its.reduce((s, i) => s + i.qty, 0)} pcs</small></div>
         <div class="oact">${iv ? `<button class="linkbtn2" data-pa="view" data-code="${c}">${esc(iv.invoice)}</button><span class="pay ${bad ? "belum" : "lunas"}">${bad ? "⚠ SELISIH" : "✓ COCOK"}</span>`
           : p.matched ? `<button class="b dark" data-pa="make" data-code="${c}">Buat Invoice</button><button class="b sm" data-pa="unmatch" data-code="${c}">Batal cocok</button>`
           : `<button class="b dark" data-pa="match" data-code="${c}">Cocokkan</button><button class="b del" data-pa="del" data-code="${c}">Hapus</button>`}</div></div>`; }).join("")}</div>`;
-  $("ps-list").insertAdjacentHTML("beforeend", pagerHtml("inbox", pPage, list.length));
+  $("ps-list").insertAdjacentHTML("beforeend", pagerHtml("inbox", pPage, total));
 }
 // ---- jendela Cocokkan (PSM-13, PSM-14): admin menyamakan daftar dengan isi chat WhatsApp
 let mCur = null, mItems = [];
@@ -1146,12 +1166,23 @@ function renderMatch() {
     <input type="number" min="1" max="999" inputmode="numeric" value="${i.qty}" data-mq="${n}" aria-label="Jumlah ${esc(i.name)}"><button type="button" class="dots" data-mrm="${n}" aria-label="Hapus ${esc(i.name)}">✕</button></div>`).join("") || "<p>Belum ada barang.</p>";
   const gone = mCur.items.filter(o => !mItems.some(i => i.id === o.id));
   $("mgone").textContent = gone.length ? "Dihapus dari pesanan website: " + gone.map(g => g.name).join(", ") : "";
-  $("madd").innerHTML = `<option value="">+ Tambah barang dari katalog…</option>` + data.products.filter(p => !mItems.some(i => i.id === p.id)).map(p => `<option value="${esc(p.id)}">${esc(p.name)} (${rpf(p.price)})</option>`).join("");
+  $("madd").value = ""; suggest();
 }
-$("mdlg").addEventListener("input", e => { if (e.target.dataset.mq !== undefined) mItems[+e.target.dataset.mq].qty = Math.floor(+e.target.value) || 0; });
+// PGS-11: kolom ketik dengan saran dari server (GET /api/products?q=), bukan daftar seluruh katalog
+let sugg = [];
+const suggest = async () => {
+  const q = $("madd").value.trim(); if (q.length > 40 || /\(Rp/.test(q)) return; // teks pilihan yang baru dipilih tidak dicari lagi
+  try { sugg = (await api("GET", "/api/products?limit=8&q=" + encodeURIComponent(q))).items.filter(p => !mItems.some(i => i.id === p.id)); } catch { sugg = []; }
+  $("msugg").innerHTML = sugg.map(p => `<option value="${esc(p.name)} (${rpf(p.price)})">`).join("");
+};
+const suggestLater = later(suggest);
+$("mdlg").addEventListener("input", e => {
+  if (e.target.dataset.mq !== undefined) mItems[+e.target.dataset.mq].qty = Math.floor(+e.target.value) || 0;
+  if (e.target.id === "madd") suggestLater();
+});
 $("mdlg").addEventListener("change", e => { // render ulang setelah selesai mengetik, supaya kolom tidak kehilangan fokus
   if (e.target.dataset.mq !== undefined) renderMatch();
-  if (e.target.id === "madd" && e.target.value) { const p = data.products.find(x => x.id === e.target.value); if (p) mItems.push({ id: p.id, name: p.name, price: p.price, qty: 1 }); renderMatch(); }
+  if (e.target.id === "madd" && e.target.value) { const p = sugg.find(x => `${x.name} (${rpf(x.price)})` === e.target.value); if (p) { mItems.push({ id: p.id, name: p.name, price: p.price, qty: 1 }); renderMatch(); } }
 });
 $("mdlg").addEventListener("click", e => { const b = e.target.closest("[data-mrm]"); if (b) { mItems.splice(+b.dataset.mrm, 1); renderMatch(); } });
 $("mcancel").onclick = () => $("mdlg").close();
@@ -1160,30 +1191,30 @@ $("msave").onclick = async () => {
   if (!items.length || items.some(i => !(i.qty >= 1 && i.qty <= 999))) return void ($("merr").textContent = "Minimal satu barang, jumlah 1 sampai 999.");
   try {
     mCur.matched = (await api("POST", `/api/inbox/${mCur.code}/match`, { items })).matched;
-    $("mdlg").close(); pTab = "match"; pPage = 1; renderInbox(); say(`✅ ${mCur.code} sudah dicocokkan. Silakan Buat Invoice.`);
+    $("mdlg").close(); pTab = "match"; pPage = 1; reloadView(); say(`✅ ${mCur.code} sudah dicocokkan. Silakan Buat Invoice.`);
   } catch (err) { $("merr").textContent = err.message; }
 };
-$("ps-q").oninput = () => { pPage = 1; renderInbox(); }; // PAG-3
+$("ps-q").oninput = later(() => { pPage = 1; loadInbox(); }); // PAG-3, PGS-8
 $("v-pesanan").addEventListener("click", async e => {
   const b = e.target.closest("button"); if (!b) return;
-  if (b.dataset.ptab) { pTab = b.dataset.ptab; pPage = 1; return renderInbox(); }
-  const p = inbox.find(x => x.code === b.dataset.code); if (!p) return;
+  if (b.dataset.ptab) { pTab = b.dataset.ptab; pPage = 1; return loadInbox(); }
+  const p = pData?.items.find(x => x.code === b.dataset.code); if (!p) return;
   if (b.dataset.pa === "match") openMatch(p);
   if (b.dataset.pa === "unmatch" && confirm(`Batalkan pencocokan ${p.code}? Hasil koreksi dibuang dan pesanan kembali ke Baru.`)) {
-    try { await api("DELETE", `/api/inbox/${p.code}/match`); delete p.matched; pTab = "new"; pPage = 1; } catch (err) { say(err.message, true); }
-    renderInbox();
+    try { await api("DELETE", `/api/inbox/${p.code}/match`); pTab = "new"; pPage = 1; } catch (err) { say(err.message, true); }
+    reloadView();
   }
   if (b.dataset.pa === "make") openInvoice(null, p);
   if (b.dataset.pa === "view") openInvoiceView(invoiceOf(p));
   if (b.dataset.pa === "del" && confirm(`Hapus pesanan ${p.code}?`)) {
-    try { await api("DELETE", "/api/inbox/" + p.code); inbox = inbox.filter(x => x !== p); } catch (err) { say(err.message, true); }
-    renderInbox();
+    try { await api("DELETE", "/api/inbox/" + p.code); } catch (err) { say(err.message, true); }
+    reloadView();
   }
 });
 
-function nextInvoice() {
+async function nextInvoice() { // PGS-9: dihitung server
   const p = (settings.invPrefix || "INV") + "-" + today().slice(0, 7).replace("-", "");
-  return p + String(orders.filter(o => o.invoice.startsWith(p)).length + 1).padStart(4, "0");
+  return (await api("GET", "/api/next-invoice?prefix=" + encodeURIComponent(p))).invoice;
 }
 
 const IF = ["customer", "phone", "address", "city", "invoice", "shipping"];
@@ -1227,11 +1258,12 @@ $("idlg").addEventListener("click", e => {
   if (b.dataset.lrm !== undefined && lines.length > 1) { lines.splice(+b.dataset.lrm, 1); renderLines(); }
 });
 
-function openInvoice(o, from = null) { // from = pesanan masuk yang dijadikan invoice (PSM-6)
+async function openInvoice(o, from = null) { // from = pesanan masuk yang dijadikan invoice (PSM-6)
   cur = o || null; pFrom = from;
-  // PSM-6/PSM-11: dari pesanan, nama dan HP terisi; pelanggan lama (HP sama) juga alamat dan kotanya dari invoice terakhir
-  const prev = from && lastOf(from.phone);
-  const v = o || { invoice: nextInvoice(), ...(from && { customer: from.name, phone: from.phone, address: from.address || prev?.address, city: prev && (!from.address || from.address === prev.address) ? prev.city : "" }) };
+  // PSM-6/PSM-11: dari pesanan, nama dan HP terisi; pelanggan lama (HP sama) juga alamat dan kotanya dari invoice terakhir (dibawa server di p.last)
+  const prev = from?.last;
+  let invoice = ""; if (!o) try { invoice = await nextInvoice(); } catch (e) { return say(e.message, true); }
+  const v = o || { invoice, ...(from && { customer: from.name, phone: from.phone, address: from.address || prev?.address, city: prev && (!from.address || from.address === prev.address) ? prev.city : "" }) };
   $("ititle").textContent = o ? "Edit Invoice" : "Buat Invoice";
   IF.forEach(f => { $("i-" + f).value = f === "shipping" ? fmtN(v[f] || "") : v[f] || ""; });
   lines = o ? o.items.map(i => ({ ...i, discount: i.discount || "" })) : from ? (from.matched?.items || from.items).map(i => ({ name: i.name, note: "", qty: i.qty, price: i.price || "", discount: "" })) : [blankLine()];
@@ -1254,7 +1286,7 @@ $("isave").onclick = async () => {
   v.items = items; v.total = calc(items, v.shipping).total;
   let o = cur;
   if (o) Object.assign(o, v);
-  else orders.unshift(o = { id: newId(), created: today(), paidAt: "", proof: "", courier: "", resi: "", shipDate: "", shipped: "", pesananKode: pFrom?.code || "", ...v, invoice: v.invoice || nextInvoice() });
+  else { try { v.invoice ||= await nextInvoice(); } catch (e) { return fail(e.message); } o = { id: newId(), created: today(), paidAt: "", proof: "", courier: "", resi: "", shipDate: "", shipped: "", pesananKode: pFrom?.code || "", ...v }; }
   $("idlg").close(); await saveOrder(o);
 };
 
@@ -1311,23 +1343,21 @@ function statusOf(o) {
 
 // KIR-4: Cetak Label baru tampil setelah kurir, jadwal, dan resi diisi (pesanan yang sudah dikirim dianggap lengkap)
 const labelReady = o => !!o.courier && !!o.resi && !!(o.shipDate || o.shipped);
+let oData = null;
+function loadShipping() { // PGS-3: today = tanggal di zona waktu pengguna
+  load("ship", "otable", "/api/shipping", { tab: oTab, q: $("oq").value.trim(), month: $("om").value, courier: $("ok").value, today: today(), page: oPage, per: PER }, r => {
+    const fix = lastPage(r, oPage, PER); if (fix) { oPage = fix; return loadShipping(); }
+    keep(r.items); oData = r; renderOrders();
+  });
+}
 function renderOrders() {
-  const all = orders.filter(o => o.paidAt), todo = all.filter(o => !o.shipped), done = all.filter(o => o.shipped);
-  $("ocount").textContent = todo.length || "";
-  const cnt = k => todo.filter(o => statusOf(o).k === k).length;
-  $("ostats").innerHTML = stat("HARI INI", cnt("today"), "#8a5a00") + stat("TERLAMBAT", cnt("late"), "#c00") + stat("TERJADWAL", cnt("sched")) + stat("BELUM DIJADWALKAN", cnt("none"));
-  $("otabs").innerHTML = tabs(oTab, [["todo", "Perlu Dikirim", todo.length], ["done", "Sudah Dikirim", done.length]], "otab");
-  const mon = o => (o.shipDate || o.paidAt).slice(0, 7);
-  fillSel("om", "Semua bulan", monthOpts(all.map(mon)));
-  fillSel("ok", "Semua kurir", [...new Set(all.map(o => o.courier).filter(Boolean))].sort().map(c => [c, c]));
-  const q = $("oq").value.toLowerCase(), m = $("om").value, c = $("ok").value;
-  const list = (oTab === "todo" ? todo : done)
-    .filter(o => (!q || [o.customer, o.invoice, o.city, o.resi].join(" ").toLowerCase().includes(q)) && (!m || mon(o) === m) && (!c || o.courier === c))
-    .sort((a, b) => oTab === "done" ? b.shipped.localeCompare(a.shipped)
-      : (labelReady(b) - labelReady(a)) || statusOf(a).rank - statusOf(b).rank || (a.shipDate || a.paidAt).localeCompare(b.shipDate || b.paidAt)); // KIR-2: siap cetak label paling atas
-  oPage = clampPage(oPage, list.length);
+  const { items: list, total, counts, stats } = oData;
+  $("ostats").innerHTML = stat("HARI INI", stats.today, "#8a5a00") + stat("TERLAMBAT", stats.late, "#c00") + stat("TERJADWAL", stats.sched) + stat("BELUM DIJADWALKAN", stats.none);
+  $("otabs").innerHTML = tabs(oTab, [["todo", "Perlu Dikirim", counts.todo], ["done", "Sudah Dikirim", counts.done]], "otab");
+  fillSel("om", "Semua bulan", monthOpts(oData.months));
+  fillSel("ok", "Semua kurir", oData.couriers.map(c => [c, c]));
   const btn = (a, o, label, cls = "sm") => `<button class="b ${cls}" data-oa="${a}" data-oid="${esc(o.id)}">${label}</button>`;
-  $("otable").innerHTML = list.length ? list.slice((oPage - 1) * PER, oPage * PER).map(o => { const st = statusOf(o); return `<div class="plc">
+  $("otable").innerHTML = list.length ? list.map(o => { const st = statusOf(o); return `<div class="plc">
       <div class="plh"><span class="av">${esc(ini(o.customer))}</span>
         <div class="plm"><b>${esc(o.customer)}</b><small>${esc(o.invoice)} · ${esc(o.city || "-")}</small></div>
         <span class="ost ${st.k}">${esc(st.t)}</span></div>
@@ -1336,17 +1366,18 @@ function renderOrders() {
         <div><small>JADWAL KIRIM</small><b>${dfmt(o.shipDate)}</b></div>
         <div><small>DIBAYAR</small><span class="pay lunas">LUNAS</span> <small class="rs">${dfmt(o.paidAt)}</small></div></div>
       <div class="oact plf">${labelReady(o) ? btn("label", o, "Cetak Label", "teal") : btn("set", o, "Atur kurir &amp; jadwal", "dark")}${dots("ship", o)}</div></div>`; }).join("")
-    : `<p style="padding:24px;text-align:center">${all.length ? "Tidak ada pesanan yang cocok." : "Belum ada pesanan siap kirim. Pesanan masuk otomatis setelah invoice dibayar."}</p>`;
-  $("otable").insertAdjacentHTML("beforeend", pagerHtml("ship", oPage, list.length));
+    : `<p style="padding:24px;text-align:center">${counts.todo + counts.done ? "Tidak ada pesanan yang cocok." : "Belum ada pesanan siap kirim. Pesanan masuk otomatis setelah invoice dibayar."}</p>`;
+  $("otable").insertAdjacentHTML("beforeend", pagerHtml("ship", oPage, total));
 }
 
 // PERF-8: satu invoice disimpan sendiri (del = hapus); server mengembalikan versi bersihnya (total dihitung ulang)
+// PGS-7: sesudahnya (berhasil atau gagal) daftar yang sedang dibuka dimuat ulang dari server, jadi tampilan selalu = data server
 async function saveOrder(o, del) {
   try {
     const r = await api(del ? "DELETE" : "PUT", "/api/orders/" + encodeURIComponent(o.id), del ? undefined : o);
     if (r.order) Object.assign(o, r.order);
-  } catch (e) { say(e.message, true); orders = await api("GET", "/api/orders").catch(() => orders); } // kembalikan ke data server
-  renderAll();
+  } catch (e) { say(e.message, true); }
+  reloadView();
 }
 
 function openShip(o) {
@@ -1375,7 +1406,7 @@ async function invAction(a, o) {
   if (a === "pay") return openPay(o);
   if (a === "edit") return openInvoice(o);
   if (a === "unpay") { if (!confirm(`Batalkan pembayaran ${o.invoice}? Pesanan keluar dari Pengiriman.`)) return; o.paidAt = ""; }
-  if (a === "del") { if (!confirm(`Hapus invoice ${o.invoice} (${o.customer})?`)) return; orders = orders.filter(x => x !== o); return saveOrder(o, true); }
+  if (a === "del") { if (!confirm(`Hapus invoice ${o.invoice} (${o.customer})?`)) return; return saveOrder(o, true); }
   await saveOrder(o);
 }
 // label pengiriman: nomor HP dan isi barang disamarkan, jumlah barang tampil, harga tidak ditampilkan
@@ -1414,15 +1445,15 @@ async function shipAction(a, o) {
 }
 $("v-invoice").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  if (b.dataset.itab) { iTab = b.dataset.itab; iPage = 1; return renderInvoices(); }
-  if (b.dataset.iview) { iView = b.dataset.iview; try { localStorage.setItem("invView", iView); } catch { } return renderInvoices(); }
-  const o = b.dataset.ia && orders.find(x => x.id === b.dataset.oid);
+  if (b.dataset.itab) { iTab = b.dataset.itab; iPage = 1; return loadInvoices(); }
+  if (b.dataset.iview) { iView = b.dataset.iview; try { localStorage.setItem("invView", iView); } catch { } return iData && renderInvoices(); }
+  const o = b.dataset.ia && known.get(b.dataset.oid);
   if (o) invAction(b.dataset.ia, o);
 });
 $("v-pengiriman").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
-  if (b.dataset.otab) { oTab = b.dataset.otab; oPage = 1; return renderOrders(); }
-  const o = b.dataset.oa && orders.find(x => x.id === b.dataset.oid);
+  if (b.dataset.otab) { oTab = b.dataset.otab; oPage = 1; return loadShipping(); }
+  const o = b.dataset.oa && known.get(b.dataset.oid);
   if (o) shipAction(b.dataset.oa, o);
 });
 
@@ -1440,7 +1471,7 @@ function popItems(ctx, o) {
 document.addEventListener("click", e => {
   const d = e.target.closest(".dots");
   if (!d) { if (!e.target.closest("#pop")) pop.hidden = true; return; }
-  const o = orders.find(x => x.id === d.dataset.oid); if (!o) return;
+  const o = known.get(d.dataset.oid); if (!o) return;
   if (!pop.hidden && popFor === d) { pop.hidden = true; return; }
   popFor = d; pop.innerHTML = popItems(d.dataset.menu, o); pop.hidden = false;
   const r = d.getBoundingClientRect(), h = pop.offsetHeight, w = pop.offsetWidth;
@@ -1450,15 +1481,16 @@ document.addEventListener("click", e => {
 pop.addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b || b.disabled) return;
   pop.hidden = true; // dokumen (data-doc) dibuka oleh handler dokumen di bawah
-  const o = orders.find(x => x.id === popFor?.dataset.oid); if (!o) return;
+  const o = known.get(popFor?.dataset.oid); if (!o) return;
   if (b.dataset.ia) invAction(b.dataset.ia, o);
   if (b.dataset.oa) shipAction(b.dataset.oa, o);
 });
 ["scroll", "resize"].forEach(ev => addEventListener(ev, () => { pop.hidden = true; }, true));
 addEventListener("keydown", e => { if (e.key === "Escape") pop.hidden = true; });
+const invSearch = later(() => { iPage = 1; loadInvoices(); }), shipSearch = later(() => { oPage = 1; loadShipping(); }); // PGS-8
 ["input", "change"].forEach(ev => {
-  $("v-invoice").addEventListener(ev, e => { if (e.target.closest(".ofil")) { iPage = 1; renderInvoices(); } });
-  $("v-pengiriman").addEventListener(ev, e => { if (e.target.closest(".ofil")) { oPage = 1; renderOrders(); } });
+  $("v-invoice").addEventListener(ev, e => { if (e.target.closest(".ofil") && !e.target.closest(".vseg")) invSearch(); });
+  $("v-pengiriman").addEventListener(ev, e => { if (e.target.closest(".ofil")) shipSearch(); });
 });
 
 // dokumen: bukti pembayaran (foto/PDF); privat, dibuka lewat login admin

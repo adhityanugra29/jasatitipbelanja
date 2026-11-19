@@ -24,5 +24,5 @@ Baca [specs/README.md](specs/README.md) sebelum mengubah apa pun. Ringkasnya:
 - Aturan bisnis dijaga **di server** (`server.js`), bukan hanya di halaman. Total invoice dihitung server.
 - Rekening ada di konstanta `BANK` di `server.js`, bukan di formulir. Jangan taruh di `admin.html` (halaman itu publik).
 - Dokumen (bukti bayar) privat. Foto produk publik.
-- Barang (`products`) dan invoice (`orders`) disimpan satu dokumen per baris; toko memuat barang per halaman (`/api/products`). Server membaca `index.html`/`admin.html` sekali saat mulai: **mulai ulang server setelah mengubahnya**. Lihat [specs/10-performa.md](specs/10-performa.md).
+- Barang (`products`) dan invoice (`orders`) disimpan satu dokumen per baris; toko memuat barang per halaman (`/api/products`); admin memuat semua daftar per halaman dari server (`/api/invoices`, `/api/shipping`, `/api/customers`, `/api/inbox`, `/api/admin/products`), tidak ada rute yang mengirim semua invoice ([specs/11-paginasi-server.md](specs/11-paginasi-server.md)). Server membaca `index.html`/`admin.html` sekali saat mulai: **mulai ulang server setelah mengubahnya**. Lihat [specs/10-performa.md](specs/10-performa.md).
 - Pemilik proyek bisa mengubah file di luar sesi (contoh: pindah ke MongoDB/Vercel). Baca ulang file sebelum mengedit.

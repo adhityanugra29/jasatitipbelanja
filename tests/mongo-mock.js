@@ -7,7 +7,17 @@ const cols = new Map();
 const cond = (v, c) => c && typeof c === "object" && Object.keys(c).some(k => k[0] === "$")
   ? Object.entries(c).every(([op, a]) => op === "$in" ? a.includes(v) : op === "$ne" ? v !== a : op === "$regex" ? new RegExp(a, c.$options).test(v ?? "") : op === "$options")
   : v === c;
-const match = (d, f = {}) => Object.entries(f).every(([k, c]) => k === "$or" ? c.some(x => match(d, x)) : cond(d[k], c));
+const match = (d, f = {}) => Object.entries(f).every(([k, c]) => k === "$or" ? c.some(x => match(d, x)) : k === "$and" ? c.every(x => match(d, x)) : cond(d[k], c));
+// aggregate secukupnya: $match $sort $group($first, $sum) $skip $limit; ekspresi: "$field", $cond, $ne, $gt
+const ev = (e, d) => typeof e === "string" && e[0] === "$" ? d[e.slice(1)] : e && typeof e === "object" ? (([op, a]) => op === "$cond" ? (ev(a[0], d) ? ev(a[1], d) : ev(a[2], d)) : op === "$ne" ? ev(a[0], d) !== ev(a[1], d) : ev(a[0], d) > ev(a[1], d))(Object.entries(e)[0]) : e;
+const group = (rows, g) => {
+  const out = new Map();
+  for (const d of rows) {
+    const id = ev(g._id, d); let o = out.get(id); if (!o) out.set(id, o = { _id: id });
+    for (const [k, a] of Object.entries(g)) { if (k === "_id") continue; const [op, x] = Object.entries(a)[0]; o[k] = op === "$first" ? (k in o ? o[k] : ev(x, d)) : (o[k] || 0) + ev(x, d); }
+  }
+  return [...out.values()];
+};
 const col = name => {
   if (!cols.has(name)) cols.set(name, new Map());
   const m = cols.get(name), live = f => [...m.values()].filter(d => match(d, f)), rows = f => live(f).map(d => ({ ...d })); // rows: salinan, seperti driver asli
@@ -25,7 +35,9 @@ const col = name => {
     deleteOne: async f => { rows(f).slice(0, 1).forEach(d => m.delete(d._id)); },
     deleteMany: async f => { rows(f).forEach(d => m.delete(d._id)); },
     countDocuments: async f => rows(f).length, estimatedDocumentCount: async () => m.size, createIndex: async () => {},
-    distinct: async k => [...new Set(rows().map(d => d[k]))],
+    distinct: async (k, f) => [...new Set(rows(f).map(d => d[k]))],
+    aggregate: p => ({ toArray: async () => p.reduce((r, s) => s.$match ? r.filter(d => match(d, s.$match)) : s.$sort ? [...r].sort(cmp(s.$sort)) : s.$group ? group(r, s.$group)
+      : s.$skip != null ? r.slice(s.$skip) : s.$limit ? r.slice(0, s.$limit) : r, rows()) }),
     find: (f = {}) => { let r = rows(f); const c = {
       sort: o => { r.sort(cmp(o)); return c; },
       skip: n => { r = r.slice(n); return c; }, limit: n => { r = r.slice(0, n); return c; },

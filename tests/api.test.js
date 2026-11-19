@@ -25,7 +25,15 @@ const valid = () => ({
 });
 const putOrder = (...changes) => { const o = valid(); changes.forEach(c => c(o)); return call("PUT", "/api/orders/" + o.id, o); };
 const rejected = async (fn) => { const r = await fn(); assert.strictEqual(r.status, 400, `harus 400, dapat ${r.status}`); };
-const catalog = async () => (await call("GET", "/api/admin/catalog")).body;
+// semua barang lewat halaman admin (PGS-10), maks 50 per permintaan; katalog = pengaturan + semua barang
+const allProducts = async () => { const out = []; for (let p = 1; ; p++) { const r = (await call("GET", `/api/admin/products?page=${p}&per=50`)).body; out.push(...r.items); if (out.length >= r.total || !r.items.length) return out; } };
+const catalog = async () => ({ ...(await call("GET", "/api/admin/catalog")).body, products: await allProducts() });
+const getOrder = id => call("GET", "/api/orders/" + id);
+const mk = (id, o = {}) => ({ ...valid(), id, invoice: id.toUpperCase(), ...o });
+const put = o => call("PUT", "/api/orders/" + o.id, o);
+const PAYX = { paidAt: "2026-11-04", proof: "bukti.jpg" };
+const drop = ids => Promise.all(ids.map(id => call("DELETE", "/api/orders/" + id)));
+const ids = r => r.body.items.map(x => x.id);
 // pulihkan katalog: buang barang yang tidak ada sebelumnya, kembalikan wa/pengumuman/kategori
 const restoreCatalog = async before => {
   for (const p of (await catalog()).products) if (!before.products.some(b => b.id === p.id)) await call("DELETE", "/api/products/" + p.id);
@@ -36,8 +44,10 @@ const prod = (id, o = {}) => ({ id, name: "P " + id, price: 1, cat: "Uji", badge
 (async () => {
   // ---------- API-1 akses
   await test("API-1", "endpoint privat menolak tanpa/dengan password salah; katalog publik terbuka", async () => {
-    assert.strictEqual((await call("GET", "/api/orders", undefined, null)).status, 401);
-    assert.strictEqual((await call("GET", "/api/orders", undefined, "salah")).status, 401);
+    for (const u of ["/api/invoices", "/api/shipping", "/api/customers", "/api/customers/081200000001/invoices", "/api/inbox", "/api/counts", "/api/orders/x", "/api/next-invoice?prefix=INV-202611", "/api/admin/products"])
+      assert.strictEqual((await call("GET", u, undefined, null)).status, 401, u);
+    assert.strictEqual((await call("GET", "/api/invoices", undefined, "salah")).status, 401);
+    assert.strictEqual((await call("GET", "/api/orders")).status, 404, "daftar semua invoice sudah dihapus (PGS)");
     assert.strictEqual((await call("GET", "/api/settings", undefined, null)).status, 401);
     assert.strictEqual((await call("GET", "/api/admin/catalog", undefined, null)).status, 401);
     assert.strictEqual((await call("PUT", "/api/products", [], null)).status, 401);
@@ -82,7 +92,7 @@ const prod = (id, o = {}) => ({ id, name: "P " + id, price: 1, cat: "Uji", badge
     await rejected(() => putOrder(o => { o.shipped = "2026-11-03"; o.courier = "JNE"; o.resi = "R1"; }));
     await rejected(() => putOrder(o => { o.paidAt = "2026-11-03"; o.proof = "bukti.pdf"; o.shipped = "2026-11-03"; o.resi = "R1"; }));
     await rejected(() => putOrder(o => { o.paidAt = "2026-11-03"; o.proof = "bukti.pdf"; o.shipped = "2026-11-03"; o.courier = "JNE"; }));
-    assert.ok(!(await call("GET", "/api/orders")).body.some(o => o.id === "uji-1"), "kasus ditolak tidak boleh menulis");
+    assert.strictEqual((await getOrder("uji-1")).status, 404, "kasus ditolak tidak boleh menulis");
   });
 
   // ---------- API-3 + API-4d: total dihitung server, HP dinormalisasi, alur lengkap diterima
@@ -90,7 +100,7 @@ const prod = (id, o = {}) => ({ id, name: "P " + id, price: 1, cat: "Uji", badge
     try {
       const o = valid(); o.total = 1; o.phone = "+62 812-3456-7890";
       assert.strictEqual((await call("PUT", "/api/orders/uji-1", o)).status, 200);
-      const got = (await call("GET", "/api/orders")).body.find(x => x.id === "uji-1");
+      const got = (await getOrder("uji-1")).body;
       assert.strictEqual(got.total, 2 * 1000 - 100 + 500);
       assert.strictEqual(got.phone, "081234567890");
       const paid = { ...got, paidAt: "2026-11-03", proof: "bukti.jpg" };
@@ -101,21 +111,19 @@ const prod = (id, o = {}) => ({ id, name: "P " + id, price: 1, cat: "Uji", badge
   });
 
   // ---------- PERF-8 satu dokumen per invoice
-  await test("PERF-8", "menyimpan/menghapus satu invoice tidak menyentuh invoice lain; yang baru di atas; id salah ditolak", async () => {
+  await test("PERF-8", "menyimpan/menghapus satu invoice tidak menyentuh invoice lain; id salah ditolak", async () => {
     try {
       const a = valid(), b = { ...valid(), id: "uji-2", invoice: "UJI-2" };
       await call("PUT", "/api/orders/uji-1", a); await call("PUT", "/api/orders/uji-2", b);
-      const list = async () => (await call("GET", "/api/orders")).body;
-      const ids = (await list()).map(o => o.id);
-      assert.ok(ids.indexOf("uji-2") < ids.indexOf("uji-1"), "invoice terbaru harus di atas");
-      const b0 = (await list()).find(o => o.id === "uji-2");
+      const b0 = (await getOrder("uji-2")).body;
       await call("PUT", "/api/orders/uji-1", { ...a, customer: "Lain" });
-      assert.deepStrictEqual((await list()).find(o => o.id === "uji-2"), b0);
-      assert.deepStrictEqual((await list()).map(o => o.id), ids); // urutan tidak berubah saat diubah
+      assert.deepStrictEqual((await getOrder("uji-2")).body, b0);
+      assert.strictEqual((await getOrder("uji-1")).body.customer, "Lain");
       assert.strictEqual((await call("PUT", "/api/orders/uji-1", a, null)).status, 401);
       assert.strictEqual((await call("PUT", "/api/orders/a%20b", a)).status, 404);
       await call("DELETE", "/api/orders/uji-1");
-      assert.deepStrictEqual((await list()).find(o => o.id === "uji-2"), b0);
+      assert.strictEqual((await getOrder("uji-1")).status, 404);
+      assert.deepStrictEqual((await getOrder("uji-2")).body, b0);
     } finally { await call("DELETE", "/api/orders/uji-1"); await call("DELETE", "/api/orders/uji-2"); }
   });
 
@@ -259,7 +267,7 @@ const prod = (id, o = {}) => ({ id, name: "P " + id, price: 1, cat: "Uji", badge
     const before = await catalog();
     const who = { name: "Ibu Uji", phone: "+62 812-3456-7890", address: "  Jl. Uji No. 1, Jakarta  " };
     const pub = (b) => call("POST", "/api/inbox", { ...who, ...b }, null), codes = ["PSN-UJI001", "PSN-UJI002"];
-    const list = async () => (await call("GET", "/api/inbox")).body.filter(x => codes.includes(x.code));
+    const list = async () => (await Promise.all(["new", "match", "done"].map(t => call("GET", "/api/inbox?per=50&tab=" + t)))).flatMap(r => r.body.items).filter(x => codes.includes(x.code));
     try {
       await call("PUT", "/api/products", [prod("uji-p", { name: "Barang Uji", price: 5000 })]);
       // PSM-1/2: tanpa login boleh; nama dan harga kiriman klien diabaikan; barang tak dikenal dibuang; kode sama = satu pesanan
@@ -311,7 +319,14 @@ const prod = (id, o = {}) => ({ id, name: "P " + id, price: 1, cat: "Uji", badge
       assert.strictEqual((await putInv("uji-a")).status, 200);                                   // simpan ulang invoice yang sama tetap diterima
       assert.strictEqual((await match(codes[0], { items: body.items })).status, 400);
       assert.strictEqual((await call("DELETE", "/api/inbox/" + codes[0] + "/match")).status, 400);
-      assert.strictEqual((await call("GET", "/api/orders")).body.find(o => o.id === "uji-a").pesananKode, codes[0]);
+      assert.strictEqual((await getOrder("uji-a")).body.pesananKode, codes[0]);
+      // PGS-5: tahap dihitung server; baris Sudah Diinvoice membawa invoicenya, jumlah invoice nomor HP itu, dan kota/alamat invoice terakhir
+      const done = (await call("GET", "/api/inbox?per=50&tab=done&q=" + codes[0])).body;
+      assert.deepStrictEqual(done.items.map(x => x.code), [codes[0]]);
+      assert.strictEqual(done.items[0].invoice.id, "uji-a");
+      assert.ok(done.items[0].invCount >= 1 && done.items[0].last.city === "Jakarta");
+      assert.ok(done.counts.done >= 1 && done.total === 1);
+      assert.strictEqual((await call("GET", "/api/inbox?tab=new&q=" + codes[0])).body.total, 0);
       assert.strictEqual((await call("DELETE", "/api/inbox/" + codes[0])).status, 400);
       await rejected(() => putInv("uji-b"));                                                     // kode yang sama di invoice lain
       await call("DELETE", "/api/orders/uji-a");
@@ -322,6 +337,116 @@ const prod = (id, o = {}) => ({ id, name: "P " + id, price: 1, cat: "Uji", badge
       for (const id of ["uji-a", "uji-b"]) await call("DELETE", "/api/orders/" + id);
       for (const c of codes) await call("DELETE", "/api/inbox/" + c);
     }
+  });
+
+  // ---------- PGS (specs/11-paginasi-server.md). Data uji ber-nama "UjiPgs…" dicari lewat q; angka global dibandingkan sebagai selisih.
+  await test("PGS-1/6/9", "Invoice: tab, cari, bulan, urutan, halaman, jumlah global, /api/counts, nomor berikutnya", async () => {
+    const ID = ["uji-ga", "uji-gb", "uji-gc"], inv = async q => (await call("GET", "/api/invoices?" + q + (/(^|&)q=/.test(q) ? "" : "&q=UjiPgs") + "&per=50")).body; // parameter pertama menang, jadi bawaan di belakang
+    const [c0, n0] = [(await call("GET", "/api/invoices")).body, (await call("GET", "/api/counts")).body];
+    try {
+      await put(mk("uji-ga", { customer: "UjiPgs Ani", city: "Bandung", created: "2026-10-05", invoice: "UJI-2026100001" }));
+      await put(mk("uji-gb", { customer: "UjiPgs Budi", created: "2026-11-02", invoice: "UJI-2026110001" }));
+      await put(mk("uji-gc", { customer: "UjiPgs Cici", created: "2026-11-03", invoice: "UJI-2026110002", ...PAYX }));
+      const c1 = (await call("GET", "/api/invoices")).body, tot = 2 * 1000 - 100 + 500;
+      assert.deepStrictEqual([c1.counts.unpaid - c0.counts.unpaid, c1.counts.paid - c0.counts.paid, c1.unpaidSum - c0.unpaidSum], [2, 1, 2 * tot]);
+      const n1 = (await call("GET", "/api/counts")).body;
+      assert.deepStrictEqual([n1.unpaid - n0.unpaid, n1.todo - n0.todo], [2, 1]); // PGS-6 (invoice lunas belum dikirim = perlu dikirim)
+      assert.deepStrictEqual(ids({ body: await inv("tab=unpaid") }), ["uji-ga", "uji-gb"]); // belum dibayar: tanggal buat naik
+      assert.deepStrictEqual(ids({ body: await inv("tab=paid") }), ["uji-gc"]);
+      assert.deepStrictEqual(ids({ body: await inv("month=2026-11") }), ["uji-gb"]);
+      assert.deepStrictEqual(ids({ body: await inv("q=bandung") }), ["uji-ga"]);                 // cari kota, tanpa membedakan huruf
+      assert.strictEqual((await inv("q=bandung&month=2026-11")).total, 0);
+      const r = await inv("month=2026-11");
+      assert.ok(r.months.includes("2026-10") && r.months.includes("2026-11") && r.counts.unpaid >= 2, "bulan dan jumlah tak terpengaruh cari/bulan");
+      let p = await inv("per=1&page=2");
+      assert.deepStrictEqual([ids({ body: p }), p.total], [["uji-gb"], 2]);
+      assert.deepStrictEqual(ids({ body: await inv("page=0") }), ["uji-ga", "uji-gb"]);          // halaman 0 = halaman 1
+      p = await inv("page=99"); assert.deepStrictEqual([p.items.length, p.total], [0, 2]);       // di luar jumlah: kosong, total tetap
+      assert.ok((await call("GET", "/api/invoices?per=9999")).body.items.length <= 50);
+      assert.strictEqual((await call("GET", "/api/invoices?q=" + encodeURIComponent("a(b[*"))).status, 200);
+      assert.ok(!("_id" in r.items[0]) && !("t" in r.items[0]));
+      // PGS-9
+      assert.strictEqual((await call("GET", "/api/next-invoice?prefix=UJI-202611")).body.invoice, "UJI-2026110003");
+      assert.strictEqual((await call("GET", "/api/next-invoice?prefix=UJI-202612")).body.invoice, "UJI-2026120001");
+      assert.strictEqual((await call("GET", "/api/next-invoice?prefix=..")).status, 400);
+    } finally { await drop(ID); }
+  });
+
+  await test("PGS-2", "barang di invoice membawa foto mini dari katalog yang namanya cocok (tanpa membedakan huruf besar/kecil)", async () => {
+    const before = await catalog();
+    try {
+      await call("PUT", "/api/products", [prod("uji-gp", { name: "UjiPgs Tas", img: "/uploads/uji-gp.jpg", thumb: "/uploads/uji-gp-s.jpg" })]);
+      const it = (name, note = "") => ({ name, note, qty: 1, price: 1000, discount: 0 });
+      await put(mk("uji-gd", { customer: "UjiPgs Pic", items: [it("ujipgs TAS"), it("UjiPgs Tas", "merah"), it("Barang Lain")] }));
+      const [a, b, c] = (await call("GET", "/api/invoices?q=UjiPgs%20Pic")).body.items[0].items;
+      assert.deepStrictEqual([a.pic, b.pic, c.pic], ["/uploads/uji-gp-s.jpg", "/uploads/uji-gp-s.jpg", ""]);
+    } finally { await drop(["uji-gd"]); await restoreCatalog(before); }
+  });
+
+  await test("PGS-3", "Pengiriman: urutan, status menurut tanggal browser, tab Sudah Dikirim, kurir, bulan, jumlah", async () => {
+    const ID = ["uji-s1", "uji-s2", "uji-s3", "uji-s4", "uji-s5"], T = "&today=2026-11-12&per=50&q=UjiShip", ship = q => call("GET", "/api/shipping?" + q).then(r => r.body);
+    const s0 = (await ship("today=2026-11-12")).stats, k0 = (await ship("today=2026-11-12")).counts;
+    try {
+      const base = { customer: "UjiShip", ...PAYX };
+      await put(mk("uji-s1", { ...base, shipDate: "2026-11-10" }));                                                  // terlambat 2 hari
+      await put(mk("uji-s2", { ...base, shipDate: "2026-11-12", courier: "UjiJNE", resi: "R2" }));                    // hari ini + siap label
+      await put(mk("uji-s3", { ...base }));                                                                          // belum dijadwalkan
+      await put(mk("uji-s4", { ...base, shipDate: "2026-11-20" }));                                                  // terjadwal
+      await put(mk("uji-s5", { ...base, courier: "UjiJNE", resi: "R5", shipped: "2026-11-11" }));                    // sudah dikirim
+      const todo = await ship("tab=todo" + T), s1 = todo.stats;
+      assert.deepStrictEqual(ids({ body: todo }), ["uji-s2", "uji-s1", "uji-s4", "uji-s3"]);                         // KIR-2: siap label, lalu terlambat, terjadwal, belum
+      assert.deepStrictEqual(["today", "late", "sched", "none"].map(k => s1[k] - s0[k]), [1, 1, 1, 1]);
+      assert.deepStrictEqual([todo.counts.todo - k0.todo, todo.counts.done - k0.done], [4, 1]);
+      assert.deepStrictEqual(ids({ body: await ship("tab=done" + T) }), ["uji-s5"]);
+      assert.deepStrictEqual(ids({ body: await ship("tab=todo&courier=UjiJNE" + T) }), ["uji-s2"]);
+      assert.ok(todo.couriers.includes("UjiJNE") && todo.months.includes("2026-11"));
+      assert.deepStrictEqual(ids({ body: await ship("tab=todo&month=2026-11" + T) }).sort(), ["uji-s1", "uji-s2", "uji-s4", "uji-s3"].sort()); // s3: bulan dari tanggal bayar
+      assert.deepStrictEqual(ids({ body: await ship("tab=todo&month=2026-12" + T) }), []);
+      const pg2 = await ship("tab=todo&per=2&page=2&today=2026-11-12&q=UjiShip");
+      assert.deepStrictEqual([ids({ body: pg2 }), pg2.total], [["uji-s4", "uji-s3"], 4]);
+      assert.strictEqual((await ship("tab=done&month=2026-11" + T)).total, 1);
+      assert.strictEqual((await ship("tab=todo&today=2026-11-21" + T)).items.find(o => o.id === "uji-s4") && 1, 1); // tanggal lain tidak merusak
+    } finally { await drop(ID); }
+  });
+
+  await test("PGS-4", "Pelanggan: satu HP = satu pelanggan, data dari invoice terbaru, total hanya yang lunas, rincian, ringkasan", async () => {
+    const ID = ["uji-p1", "uji-p2", "uji-p3"], cust = q => call("GET", "/api/customers?" + q).then(r => r.body), c0 = (await cust("q=zzzz-tidak-ada")).stats;
+    try {
+      await put(mk("uji-p1", { customer: "UjiCust Lama", phone: "081200000111", created: "2026-10-01", ...PAYX }));
+      await put(mk("uji-p2", { customer: "UjiCust Baru", phone: "081200000111", created: "2026-11-01", city: "Cimahi" }));
+      await put(mk("uji-p3", { customer: "UjiCust Dua", phone: "081200000222", created: "2026-09-01" }));
+      const r = await cust("q=UjiCust"), [a, b] = r.items, tot = 2 * 1000 - 100 + 500;
+      assert.deepStrictEqual([r.total, a.phone, b.phone], [2, "081200000111", "081200000222"]);                        // urut invoice terakhir turun
+      assert.deepStrictEqual([a.name, a.city, a.n, a.paid, a.spent, a.last], ["UjiCust Baru", "Cimahi", 2, 1, tot, "2026-11-01"]);
+      assert.deepStrictEqual([b.n, b.paid, b.spent], [1, 0, 0]);
+      assert.deepStrictEqual((await cust("q=0812000001")).items.map(x => x.phone), ["081200000111"]);               // cari nomor HP
+      const st = (await cust("q=zzzz-tidak-ada")).stats;
+      assert.deepStrictEqual([st.customers - c0.customers, st.repeat - c0.repeat, st.spent - c0.spent], [2, 1, tot]);
+      const p2 = await cust("q=UjiCust&per=1&page=2"); assert.deepStrictEqual([p2.items.map(x => x.phone), p2.total], [["081200000222"], 2]);
+      assert.deepStrictEqual((await call("GET", "/api/customers/081200000111/invoices")).body.items.map(o => o.id), ["uji-p2", "uji-p1"]);
+    } finally { await drop(ID); }
+  });
+
+  await test("PGS-10", "Katalog admin: cari, kategori, stok, halaman, terbaru dulu; pengaturan tanpa daftar barang; ganti nama kategori memindahkan barangnya", async () => {
+    const before = await catalog(), adm = q => call("GET", "/api/admin/products?" + q).then(r => r.body);
+    try {
+      for (let n = 1; n <= 5; n++) await call("PUT", "/api/products", [prod("uji-k" + n, { name: "KatUji " + n, cat: "UjiKat", stock: n === 1 ? 0 : n === 2 ? 5 : null })]);
+      const all = await adm("q=katuji&per=50");
+      assert.deepStrictEqual([all.items.map(p => p.id), all.total], [["uji-k5", "uji-k4", "uji-k3", "uji-k2", "uji-k1"], 5]); // terbaru dulu
+      assert.ok(all.count >= 5 && !("t" in all.items[0]));
+      assert.deepStrictEqual((await adm("q=katuji&per=2&page=3")).items.map(p => p.id), ["uji-k1"]);
+      assert.deepStrictEqual((await adm("q=katuji&stock=habis")).items.map(p => p.id), ["uji-k1"]);
+      assert.strictEqual((await adm("q=katuji&stock=ada")).total, 4);
+      assert.deepStrictEqual((await adm("q=katuji&stock=terbatas&per=50")).items.map(p => p.id).sort(), ["uji-k1", "uji-k2"]);
+      assert.strictEqual((await adm("cat=UjiKat")).total, 5);
+      assert.strictEqual((await adm("q=ujikat&per=1")).total, 5);                                                       // cari juga di kategori
+      assert.strictEqual((await call("GET", "/api/admin/products?q=" + encodeURIComponent("a(b[*"))).status, 200);
+      const meta = (await call("GET", "/api/admin/catalog")).body;
+      assert.ok(!("products" in meta) && meta.catCounts.UjiKat === 5);
+      await call("PUT", "/api/data", { cats: [...meta.cats.filter(c => c !== "UjiKat"), "UjiKat2"], rename: { UjiKat: "UjiKat2" } });
+      const m2 = (await call("GET", "/api/admin/catalog")).body;
+      assert.deepStrictEqual([m2.catCounts.UjiKat2, m2.catCounts.UjiKat], [5, undefined]);
+    } finally { await restoreCatalog(before); }
   });
 
   console.log(failed ?`\n${failed} tes GAGAL` : "\nSemua tes lolos");
