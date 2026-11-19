@@ -262,37 +262,43 @@
   .isum .g { border-top:2px solid var(--ink); margin-top:4px; padding-top:8px; font-size:1.1rem; }
   /* tampilan invoice */
   #vdlg { width:min(820px,96vw); }
-  #invoice { background:#fff; color:#111; padding:28px 32px; font-size:14px; page:inv; }
-  #invoice .vt { text-align:center; font-size:1.8rem; letter-spacing:.04em; margin:0 0 18px; }
-  #invoice .vhead { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
-  #invoice .vstore { display:flex; gap:12px; align-items:flex-start; }
-  #invoice .vstore img { height:64px; }
-  #invoice .vsub { font-size:.85rem; color:#555; line-height:1.5; }
-  #invoice .vsub b { color:#111; font-size:1rem; }
-  #invoice .vmeta { text-align:right; font-size:.85rem; color:#555; line-height:1.6; }
-  #invoice .ok { color:#0a7a5a; }
-  #invoice .no { color:#c00; }
-  #invoice .vline { border:0; border-top:2px solid #111; margin:16px 0; }
-  #invoice .vcols { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
-  #invoice small { display:block; font-size:.68rem; letter-spacing:.08em; color:#777; margin-bottom:4px; }
-  #invoice .vbig { font-size:1.1rem; font-weight:700; }
-  #invoice table { width:100%; border-collapse:collapse; margin-top:18px; }
-  #invoice th { font-size:.68rem; letter-spacing:.08em; color:#777; text-align:right; padding:8px 4px; border-bottom:1px solid #111; }
-  #invoice td { padding:10px 4px; text-align:right; border-bottom:1px solid #ddd; }
-  #invoice th:first-child, #invoice td:first-child { text-align:left; }
-  #invoice .vnote { color:#777; font-size:.8rem; }
-  #invoice .vtot { margin:12px 0 0 auto; width:min(320px,100%); }
-  #invoice .vtot div { display:flex; justify-content:space-between; padding:6px 0; }
-  #invoice .vtot .g { border-top:2px solid #111; margin-top:6px; padding-top:10px; font-size:1.15rem; font-weight:800; }
-  #invoice .vfoot { display:flex; justify-content:space-between; gap:16px; align-items:flex-end; }
-  #invoice .vfoot img { height:56px; }
-  #invoice .vfn { margin-top:14px; padding-top:10px; border-top:1px dashed #bbb; font-size:.8rem; color:#555; }
+  :is(#invoice,.ipv) { background:#fff; color:#111; padding:28px 32px; font-size:14px; page:inv; }
+  :is(#invoice,.ipv) .vt { text-align:center; font-size:1.8rem; letter-spacing:.04em; margin:0 0 18px; }
+  :is(#invoice,.ipv) .vhead { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
+  :is(#invoice,.ipv) .vstore { display:flex; gap:12px; align-items:flex-start; }
+  :is(#invoice,.ipv) .vstore img { height:64px; }
+  :is(#invoice,.ipv) .vsub { font-size:.85rem; color:#555; line-height:1.5; }
+  :is(#invoice,.ipv) .vsub b { color:#111; font-size:1rem; }
+  :is(#invoice,.ipv) .vmeta { text-align:right; font-size:.85rem; color:#555; line-height:1.6; }
+  :is(#invoice,.ipv) .ok { color:#0a7a5a; }
+  :is(#invoice,.ipv) .no { color:#c00; }
+  :is(#invoice,.ipv) .vline { border:0; border-top:2px solid #111; margin:16px 0; }
+  :is(#invoice,.ipv) .vcols { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  :is(#invoice,.ipv) small { display:block; font-size:.68rem; letter-spacing:.08em; color:#777; margin-bottom:4px; }
+  :is(#invoice,.ipv) .vbig { font-size:1.1rem; font-weight:700; }
+  :is(#invoice,.ipv) table { width:100%; border-collapse:collapse; margin-top:18px; }
+  :is(#invoice,.ipv) th { font-size:.68rem; letter-spacing:.08em; color:#777; text-align:right; padding:8px 4px; border-bottom:1px solid #111; }
+  :is(#invoice,.ipv) td { padding:10px 4px; text-align:right; border-bottom:1px solid #ddd; }
+  :is(#invoice,.ipv) th:first-child, :is(#invoice,.ipv) td:first-child { text-align:left; }
+  :is(#invoice,.ipv) .vnote { color:#777; font-size:.8rem; }
+  :is(#invoice,.ipv) .vtot { margin:12px 0 0 auto; width:min(320px,100%); }
+  :is(#invoice,.ipv) .vtot div { display:flex; justify-content:space-between; padding:6px 0; }
+  :is(#invoice,.ipv) .vtot .g { border-top:2px solid #111; margin-top:6px; padding-top:10px; font-size:1.15rem; font-weight:800; }
+  :is(#invoice,.ipv) .vfoot { display:flex; justify-content:space-between; gap:16px; align-items:flex-end; }
+  :is(#invoice,.ipv) .vfoot img { height:56px; }
+  :is(#invoice,.ipv) .vfn { margin-top:14px; padding-top:10px; border-top:1px dashed #bbb; font-size:.8rem; color:#555; }
   .rows { display:flex; flex-direction:column; gap:8px; margin:8px 0; }
   .srow { display:flex; align-items:center; gap:6px; }
   .srow input { margin:0; flex:1; min-width:0; }
   .srow small { flex:none; opacity:.65; white-space:nowrap; }
   .srow .dots { flex:none; width:40px; height:40px; }
   .srow .dots.del { color:#c00; }
+  .ivs { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr); gap:18px; align-items:start; }
+  .ivs-p { position:sticky; top:12px; }
+  .ivs-p > small { display:block; font-weight:700; letter-spacing:.08em; font-size:.7rem; color:#5E8388; margin-bottom:6px; }
+  .ipv { border:1.5px solid var(--line); border-radius:12px; box-shadow:0 4px 14px #0E3B4314; overflow:hidden; }
+  .ipv-go { display:none; }
+  @media (max-width:800px) { .ivs { grid-template-columns:1fr; } .ivs-p { position:static; } .ipv-go { display:block; width:100%; margin-top:10px; } }
   .srow .grip { flex:none; width:32px; height:40px; border:0; background:none; font-size:1.3rem; color:#5E8388; cursor:grab; touch-action:none; user-select:none; }
   .srow { transition:transform .15s; background:#fff; }
   .srow.drag { transition:none; position:relative; z-index:2; box-shadow:0 6px 18px #0E3B4333; border-radius:12px; }
@@ -303,8 +309,8 @@
   .tgl { flex:none; padding:8px 12px; border:1.5px solid var(--line); border-radius:99px; background:#fff; font:inherit; font-size:.8rem; font-weight:700; color:#5E8388; cursor:pointer; }
   .tgl.on { background:var(--teal-soft); border-color:var(--teal); color:var(--teal-d); }
   textarea { width:100%; padding:10px; font:inherit; color:var(--ink); border:1.5px solid var(--line); border-radius:12px; margin:4px 0 8px; background:#fff; resize:vertical; }
-  #invoice .vthx { text-align:right; font-style:italic; color:#666; font-size:.85rem; }
-  @media (max-width:700px) { #invoice { padding:16px; } #invoice .vcols { grid-template-columns:1fr; } #invoice .vhead { flex-direction:column; } #invoice .vmeta { text-align:left; } }
+  :is(#invoice,.ipv) .vthx { text-align:right; font-style:italic; color:#666; font-size:.85rem; }
+  @media (max-width:700px) { :is(#invoice,.ipv) { padding:16px; } :is(#invoice,.ipv) .vcols { grid-template-columns:1fr; } :is(#invoice,.ipv) .vhead { flex-direction:column; } :is(#invoice,.ipv) .vmeta { text-align:left; } }
   .items { white-space:pre-line; font-size:.92rem; min-width:170px; max-width:300px; }
   textarea { width:100%; padding:10px; font:inherit; color:var(--ink); border:2px solid var(--ink); border-radius:8px; margin:4px 0 8px; background:#fff; resize:vertical; }
   .otable table { min-width:940px; }
@@ -494,7 +500,7 @@
         <label>Nomor WhatsApp toko (contoh 6281234567890)</label><input id="wa" inputmode="numeric">
         <label>Pengumuman di atas katalog (kosongkan jika tidak perlu)</label><input id="notice" placeholder="Contoh: Open order sampai Jumat, barang tiba minggu depan">
       </div>
-      <div class="box" data-sp="invoice" hidden>
+      <div class="box" data-sp="invoice" hidden><div class="ivs"><div class="ivs-f">
         <small>Identitas toko yang tampil di kepala setiap invoice. Kosongkan yang tidak perlu.</small>
         <label>Nama toko</label><input id="cfg-storeName">
         <label>Alamat toko</label><input id="cfg-address">
@@ -504,7 +510,8 @@
         <label>Kalimat penutup (kosongkan = bawaan)</label><textarea id="cfg-closing" rows="2" maxlength="300" placeholder="Terima kasih telah mempercayakan belanja Anda kepada kami."></textarea>
         <label>Catatan kaki (opsional, mis. syarat pembayaran / retur)</label><textarea id="cfg-footnote" rows="3" maxlength="300"></textarea>
         <label>Awalan nomor invoice (huruf/angka, maks. 6)</label><input id="cfg-invPrefix" maxlength="6" placeholder="INV"><small>Hanya untuk invoice baru; nomor lama tidak berubah.</small>
-      </div>
+        <button type="button" class="b ipv-go" id="ipv-go">👁 Lihat pratinjau</button>
+      </div><div class="ivs-p" id="ipv-box"><small>PRATINJAU · CONTOH, BELUM DISIMPAN</small><div id="ipv" class="ipv"></div></div></div></div>
       <button class="b dark" id="save">💾 Simpan Pengaturan</button>
     </section>
     <div id="msg"></div>
@@ -739,8 +746,16 @@ const fillCfg = () => {
   CFG.forEach(k => { $("cfg-" + k).value = settings[k] || ""; });
   catRows = (data.cats?.length ? data.cats : [...new Set(data.products.map(p => p.cat).filter(Boolean))]).map(c => ({ orig: c, name: c }));
   courRows = (settings.couriers || []).map(c => ({ name: c.name }));
-  renderCfgRows();
+  renderCfgRows(); renderIpv();
 };
+// SET-13: pratinjau invoice memakai isian yang sedang diketik (belum disimpan) dan invoice contoh
+function renderIpv() {
+  const st = { ...settings, ...Object.fromEntries(CFG.map(k => [k, $("cfg-" + k).value.trim()])) };
+  $("ipv").innerHTML = invoiceHtml({ invoice: `${st.invPrefix || "INV"}-${today().replace(/-/g, "").slice(0, 6)}0001`, created: today(), paidAt: "", customer: "Ibu Contoh", phone: "081234567890", address: "Jl. Contoh No. 1", city: "Jakarta", shipDate: "", courier: "", shipping: 20000,
+    items: [{ name: "Tote bag kulit", note: "cokelat", qty: 1, price: 450000, discount: 0 }, { name: "Kaos kaki", note: "", qty: 2, price: 25000, discount: 5000 }] }, st);
+}
+$("ipv-box").parentElement.addEventListener("input", e => { if (e.target.id?.startsWith("cfg-")) renderIpv(); });
+$("ipv-go").onclick = () => $("ipv-box").scrollIntoView({ behavior: "smooth", block: "start" });
 const courDatalist = () => { $("couriers").innerHTML = (settings.couriers || []).map(c => `<option value="${esc(c.name)}">`).join(""); };
 function renderCfgRows() {
   const row = (i, r, kind, extra, canDel) => `<div class="srow" data-i="${i}"><button type="button" class="grip" data-grip="${kind}" aria-label="Seret untuk mengatur urutan">⠿</button><input value="${esc(r.name)}" data-k="${kind}" data-i="${i}" maxlength="40" aria-label="Nama">${extra}
@@ -1204,8 +1219,8 @@ $("isave").onclick = async () => {
 };
 
 // invoice yang dibuat sistem (cetak / simpan sebagai PDF lewat dialog cetak browser)
-function invoiceHtml(o) {
-  const c = calc(o.items, o.shipping || 0), st = settings, name = st.storeName || "Jasa Titip Belanja";
+function invoiceHtml(o, st = settings) {
+  const c = calc(o.items, o.shipping || 0), name = st.storeName || "Jasa Titip Belanja";
   const contact = [st.phone, st.email].filter(Boolean).map(esc).join(" · ");
   return `
     <h1 class="vt">INVOICE</h1>
