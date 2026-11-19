@@ -427,6 +427,8 @@
   <main id="main">
     <section id="v-katalog">
       <div class="pagehead"><h2>Katalog</h2><button class="b dark" id="add">+ Tambah Barang</button></div>
+      <div class="ofil"><input id="k-q" placeholder="Cari nama, keterangan, kategori"><select id="k-c"></select>
+        <select id="k-s"><option value="">Semua stok</option><option value="ada">Tersedia</option><option value="habis">Stok habis</option><option value="terbatas">Stok terbatas</option></select></div>
       <div id="list"></div>
     </section>
     <section id="v-bulk" hidden>
@@ -563,7 +565,7 @@
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
-const PER = 10; // PAG-1: baris (kartu) per halaman di semua daftar admin
+const PER = 10, PER_KAT = 12; // PAG-1: baris per halaman; KAT-15: Katalog 12 kartu
 let page = 1, pw = "", data = { wa: "", notice: "", products: [], cats: [] };
 
 async function api(method, url, body) {
@@ -577,18 +579,22 @@ function render() {
   $("wa").value = data.wa; $("notice").value = data.notice || "";
   $("tcount").textContent = data.products.length || "";
   $("cats").innerHTML = [...new Set([...(data.cats || []), ...data.products.map(p => p.cat)].filter(Boolean))].map(c => `<option value="${esc(c)}">`).join("");
-  page = clampPage(page, data.products.length);
-  const start = (page - 1) * PER; // PAG-4: indeks global, supaya Edit/Hapus menunjuk barang yang benar di halaman mana pun
-  $("list").innerHTML = `<div class="cards">` + data.products.slice(start, start + PER).map((p, i) => { return `
+  fillSel("k-c", "Semua kategori", [...new Set(data.products.map(p => p.cat).filter(Boolean))].sort().map(c => [c, c]));
+  const q = $("k-q").value.toLowerCase(), kc = $("k-c").value, ks = $("k-s").value;
+  // KAT-14: indeks global ikut dibawa, supaya Edit/Hapus menunjuk barang yang benar walau daftar terfilter (PAG-4)
+  const list = data.products.map((p, gi) => [p, gi]).filter(([p]) => (!q || [p.name, p.desc, p.cat].join(" ").toLowerCase().includes(q)) && (!kc || p.cat === kc)
+    && (!ks || (ks === "habis" ? p.stock === 0 : ks === "ada" ? p.stock !== 0 : p.stock != null)));
+  page = clampPage(page, list.length, PER_KAT);
+  $("list").innerHTML = `<div class="cards">` + list.slice((page - 1) * PER_KAT, page * PER_KAT).map(([p, gi]) => { return `
     <div class="pc">
       ${p.img ? `<img src="${esc(p.img)}" alt="">` : `<div class="ph">🛍️</div>`}
       <h3>${esc(p.name || "(tanpa nama)")}</h3>${p.badge ? `<span class="chip bdg ${p.badge}">${BADGE_LABEL[p.badge]}</span>` : ""}
       <div class="sub">${esc(p.desc || p.cat)}</div>
       <div class="price">Rp${(p.price || 0).toLocaleString("id-ID")}</div>
       <div class="st ${p.stock === 0 ? "out" : ""}">${p.stock == null ? "Stok tidak terbatas" : p.stock > 0 ? "Sisa " + p.stock : "Stok habis"}</div>
-      <div class="acts"><button class="b" data-edit="${start + i}">Edit</button><button class="b del" data-del="${start + i}">Hapus</button></div>
-    </div>`; }).join("") + `</div>` + pagerHtml("kat", page, data.products.length);
-  if (!data.products.length) $("list").innerHTML = "<p>Belum ada barang. Klik “+ Tambah Barang”.</p>";
+      <div class="acts"><button class="b" data-edit="${gi}">Edit</button><button class="b del" data-del="${gi}">Hapus</button></div>
+    </div>`; }).join("") + `</div>` + pagerHtml("kat", page, list.length, PER_KAT);
+  if (!list.length) $("list").innerHTML = `<p style="padding:24px;text-align:center">${data.products.length ? "Tidak ada barang yang cocok." : "Belum ada barang. Klik “+ Tambah Barang”."}</p>`;
 }
 
 function renderForm(i) {
@@ -896,13 +902,13 @@ const rpf = n => "Rp" + (n || 0).toLocaleString("id-ID");
 const newId = () => Date.now() + "-" + Math.random().toString(36).slice(2, 6);
 const renderAll = () => { renderInvoices(); renderOrders(); renderCustomers(); renderInbox(); };
 // PAG-2: kontrol halaman (jendela 5 angka); tidak tampil bila datanya <= PER
-const clampPage = (pg, total) => Math.min(Math.max(1, pg), Math.max(1, Math.ceil(total / PER)));
-function pagerHtml(key, pg, total) {
-  const pages = Math.ceil(total / PER); if (pages <= 1) return "";
+const clampPage = (pg, total, per = PER) => Math.min(Math.max(1, pg), Math.max(1, Math.ceil(total / per)));
+function pagerHtml(key, pg, total, per = PER) {
+  const pages = Math.ceil(total / per); if (pages <= 1) return "";
   const lo = Math.max(1, Math.min(pg - 2, pages - 4)), hi = Math.min(pages, lo + 4);
   const btn = (to, label, aria, off, on) => `<button type="button" class="pg${on ? " on" : ""}" data-pg="${key}" data-to="${to}" aria-label="${aria}" ${off ? "disabled" : ""}${on ? ' aria-current="page"' : ""}>${label}</button>`;
   let nums = ""; for (let i = lo; i <= hi; i++) nums += btn(i, i, "Halaman " + i, false, i === pg);
-  return `<nav class="pgn" aria-label="Halaman"><small>Menampilkan ${(pg - 1) * PER + 1}–${Math.min(total, pg * PER)} dari ${total}</small><div class="pgb">${btn(pg - 1, "‹", "Halaman sebelumnya", pg <= 1)}${nums}${btn(pg + 1, "›", "Halaman berikutnya", pg >= pages)}</div></nav>`;
+  return `<nav class="pgn" aria-label="Halaman"><small>Menampilkan ${(pg - 1) * per + 1}–${Math.min(total, pg * per)} dari ${total}</small><div class="pgb">${btn(pg - 1, "‹", "Halaman sebelumnya", pg <= 1)}${nums}${btn(pg + 1, "›", "Halaman berikutnya", pg >= pages)}</div></nav>`;
 }
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-pg]"); if (!b || b.disabled) return;
@@ -1004,6 +1010,8 @@ function renderCustomers() {
     : `<p style="padding:24px;text-align:center">${all.length ? "Tidak ada pelanggan yang cocok." : "Belum ada pelanggan"}</p>`;
   $("pl-table").insertAdjacentHTML("beforeend", pagerHtml("cust", cPage, list.length));
 }
+$("k-q").oninput = () => { page = 1; render(); }; // PAG-3
+["k-c", "k-s"].forEach(id => $(id).onchange = () => { page = 1; render(); });
 $("pl-q").oninput = () => { cPage = 1; renderCustomers(); }; // PAG-3
 $("pl-table").addEventListener("click", e => {
   const b = e.target.closest("button"); if (!b) return;
