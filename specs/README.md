@@ -19,7 +19,7 @@ Spesifikasi di folder ini adalah **sumber kebenaran**. Kode mengikuti spesifikas
 | ⬜ | Belum diuji. Kode mungkin sudah ada. |
 | 🚫 | Ditunda atau belum diputuskan. |
 
-Berkas halaman (`index.html`, `admin.html`, `assets/`) ada di folder `web/`; nama berkas di spec tanpa awalan itu.
+Berkas halaman (`index.html`, `admin.html`, `assets/`) ada di folder `public/`; nama berkas di spec tanpa awalan itu.
 
 ## Cara menguji
 

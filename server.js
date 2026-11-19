@@ -57,13 +57,13 @@ const send = (res, code, obj, cache = "no-store") => {
 };
 const body304 = (req, res, etag) => req.headers["if-none-match"] === etag && (res.writeHead(304, { etag }), res.end(), true);
 // PERF-3: halaman dan logo dibaca sekali (permintaan pertama) lalu disimpan di memori; html dikirim gzip
-const STATIC = {}, PAGES = { "/": "web/index.html", "/index.html": "web/index.html", "/admin": "web/admin.html" }; // semua berkas halaman ada di web/ (satu pola bundel Vercel: "web/**")
+const STATIC = {}, PAGES = { "/": "public/index.html", "/index.html": "public/index.html", "/admin": "public/admin.html" }; // folder public/ dilayani langsung oleh Vercel (CDN); server ini melayaninya hanya untuk lokal dan sebagai cadangan
 const staticFor = url => {
-  const file = PAGES[url] || (/^\/assets\/[\w.-]+$/.test(url) &&"web/assets/" + path.basename(url));
+  const file = PAGES[url] || (/^\/assets\/[\w.-]+$/.test(url) &&"public/assets/" + path.basename(url));
   if (!file) return null;
   if (!STATIC[file]) { // gagal baca = lempar galat (jadi jawaban 400 berisi pesan), bukan menghentikan fungsi
-    let buf; try { buf = fs.readFileSync(path.join(DIR, file)); } catch (e) { if (e.code === "ENOENT" && file.startsWith("web/assets/")) return null; throw e; }
-    STATIC[file] = { buf, gz: path.extname(file) === ".html" ? zlib.gzipSync(buf) : null, type: typeOf(file), cache: file.startsWith("web/assets/") ? "public, max-age=86400" : "public, max-age=0, must-revalidate", etag: '"' + crypto.createHash("sha1").update(buf).digest("hex").slice(0, 16) + '"' };
+    let buf; try { buf = fs.readFileSync(path.join(DIR, file)); } catch (e) { if (e.code === "ENOENT" && file.startsWith("public/assets/")) return null; throw e; }
+    STATIC[file] = { buf, gz: path.extname(file) === ".html" ? zlib.gzipSync(buf) : null, type: typeOf(file), cache: file.startsWith("public/assets/") ? "public, max-age=86400" : "public, max-age=0, must-revalidate", etag: '"' + crypto.createHash("sha1").update(buf).digest("hex").slice(0, 16) + '"' };
   }
   return STATIC[file];
 };

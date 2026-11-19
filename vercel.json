@@ -1,4 +1,6 @@
 {
+  "cleanUrls": true,
   "rewrites": [{ "source": "/(.*)", "destination": "/api/index?p=/$1" }],
-  "functions": { "api/index.js": { "includeFiles": "web/**" } }
+  "headers": [{ "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }] }],
+  "functions": { "api/index.js": { "includeFiles": "public/**" } }
 }

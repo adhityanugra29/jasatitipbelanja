@@ -17,7 +17,7 @@ Baca [specs/README.md](specs/README.md) sebelum mengubah apa pun. Ringkasnya:
 
 - Server: `ADMIN_PASSWORD=... MONGODB_URI=mongodb+srv://... node server.js` (setelah `npm install`). Penyimpanan di MongoDB.
 - Uji API: `BASE=http://localhost:3000 ADMIN_PASSWORD=... node tests/api.test.js`
-- Bukan hanya `server.js`: `web/index.html` (toko) dan `web/admin.html` (admin) adalah file tunggal tanpa langkah build. Semua berkas halaman ada di `web/` supaya ikut terbundel ke Vercel (`vercel.json`: `web/**`).
+- Bukan hanya `server.js`: `public/index.html` (toko) dan `public/admin.html` (admin) adalah file tunggal tanpa langkah build. Berkas halaman ada di `public/` supaya Vercel melayaninya langsung (CDN); fungsi di `api/` hanya untuk `/api/*` dan `/uploads/*`.
 
 ## Hal yang perlu diingat
 
