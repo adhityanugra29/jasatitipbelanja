@@ -139,23 +139,18 @@
   .ivgrid { grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:14px; }
   .ivcard { background:#fff; border-radius:18px; box-shadow:0 4px 14px #0E3B4314; overflow:hidden; display:flex; flex-direction:column; border-top:5px solid var(--pink); }
   .ivcard.paid { border-top-color:#0BBDB6; }
-  .ivhead { padding:14px 16px 10px; display:grid; grid-template-columns:1fr auto; align-items:center; gap:2px 8px; background:#FDEBF3; }
-  .ivhead small { grid-column:1; color:#5E8388; }
-  .ivhead .pay { grid-column:2; grid-row:1/3; }
-  .ivwho { padding:12px 16px 0; display:flex; flex-direction:column; }
-  .ivwho small, .ivit small { color:#5E8388; }
-  .ivitems { list-style:none; margin:10px 16px 12px; padding:0; flex:1; background:#FAFDFD; border:1px solid var(--line); border-radius:12px; }
-  .ivitems-h { padding:8px 12px 0; font-size:.72rem; font-weight:700; letter-spacing:.04em; color:#5E8388; }
-  .ivit { display:grid; grid-template-columns:40px 1fr auto; gap:10px; align-items:start; padding:10px 12px; border-top:1px solid var(--line); }
-  .ivit:first-of-type { border-top:0; }
-  .ivit img, .ivph { width:40px; height:40px; border-radius:10px; object-fit:cover; }
-  .ivph { display:grid; place-items:center; font-size:1.2rem; background:#FDEBF3; }
-  .ivit > div { min-width:0; display:flex; flex-direction:column; gap:1px; }
-  .ivit > div > b { font-size:.92rem; line-height:1.25; }
-  .ivit > b { font-size:.92rem; white-space:nowrap; text-align:right; }
-  .ivq { display:inline-block; background:#E3F6F5; color:#0E3B43; border-radius:6px; padding:0 6px; font-weight:700; margin-right:4px; }
-  .ivd { display:inline-block; background:#FDEBF3; color:#c0307a; border-radius:6px; padding:0 6px; font-weight:700; margin-top:2px; align-self:flex-start; }
-  .ivsum { padding:0 16px 10px; display:flex; justify-content:space-between; font-size:.88rem; color:#5E8388; }
+  .ivhead { padding:10px 16px; display:flex; align-items:center; justify-content:space-between; gap:8px; background:#FDEBF3; }
+  .ivhead small, .ivwho small, .ivit small { color:#5E8388; }
+  .ivwho { padding:10px 16px 0; font-size:.95rem; }
+  .ivitems { list-style:none; margin:6px 16px 8px; padding:0; flex:1; }
+  .ivit { display:grid; grid-template-columns:32px 1fr auto; gap:8px; align-items:center; padding:6px 0; border-top:1px solid var(--line); font-size:.88rem; }
+  .ivit:first-child { border-top:0; }
+  .ivit img, .ivph { width:32px; height:32px; border-radius:8px; object-fit:cover; }
+  .ivph { display:grid; place-items:center; font-size:1rem; background:#FDEBF3; }
+  .ivit > div { min-width:0; display:flex; flex-direction:column; line-height:1.3; }
+  .ivit > b { white-space:nowrap; }
+  .ivd { color:#c0307a; font-weight:700; }
+  .ivsum { padding:0 16px; font-size:.8rem; color:#5E8388; text-align:right; }
   .ivfoot { padding:10px 16px 14px; border-top:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
   .ivfoot > b { font-size:1.15rem; }
   @media (max-width:800px) {
@@ -193,6 +188,11 @@
   .plm small { opacity:.65; }
   .pls.shp { grid-template-columns:1fr 1fr; }
   .pls.shp .wide { grid-column:1/-1; }
+  .pls .shl { list-style:none; margin:4px 0 0; padding:8px 12px; background:#FAFDFD; border:1px solid var(--line); border-radius:12px; display:grid; gap:6px; }
+  .pls .shl li { display:flex; gap:8px; align-items:baseline; }
+  .pls .shl b { font-size:1rem; }
+  .pls .shl li small { display:inline; font-size:.85rem; letter-spacing:0; font-weight:400; margin:0; }
+  .pls .shq { flex:none; min-width:2em; text-align:center; background:#E3F6F5; color:#0E3B43; border-radius:6px; padding:0 6px; font-weight:700; font-size:.85rem; }
   .pls .shi { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:.95rem; }
   .pls .rs { display:inline; font-size:.8rem; letter-spacing:0; font-weight:400; color:inherit; opacity:.65; }
   .plf { margin-top:12px; padding-top:12px; border-top:1px solid var(--line); }
@@ -964,12 +964,12 @@ function renderInvoices() {
         <div class="ivtot"><b>${rpf(o.total)}</b><br>${status(o)}${o.paidAt ? `<br><small>${kirim(o)}</small>` : ""}</div>
         ${acts(o)}</div>`).join("")}</div>`
     : `<div class="ivgrid">${shown.map(o => `<div class="ivcard ${o.paidAt ? "paid" : ""}">
-        <div class="ivhead">${no(o)}<small>${dfmt(o.created)}</small>${status(o)}</div>
-        <div class="ivwho"><b>${esc(o.customer)}</b><small>${esc(o.city || "-")}${o.paidAt ? " · " + kirim(o) : ""}</small></div>
-        <ul class="ivitems"><li class="ivitems-h" style="list-style:none">${o.items.length} BARANG</li>${o.items.map(i => `<li class="ivit">${picOf(i) ? `<img src="${esc(picOf(i))}" alt="">` : `<div class="ivph">🛍️</div>`}
-          <div><b>${esc(i.name)}</b>${i.note ? `<small>${esc(i.note)}</small>` : ""}<small><span class="ivq">${i.qty}×</span>${rpf(i.price)}</small>${i.discount ? `<span class="ivd">Diskon −${rpf(i.discount)}</span>` : ""}</div>
+        <div class="ivhead"><span>${no(o)} <small>· ${dfmt(o.created)}</small></span>${status(o)}</div>
+        <div class="ivwho"><b>${esc(o.customer)}</b> <small>· ${esc(o.city || "-")}${o.paidAt ? " · " + kirim(o) : ""}</small></div>
+        <ul class="ivitems">${o.items.map(i => `<li class="ivit">${picOf(i) ? `<img src="${esc(picOf(i))}" alt="">` : `<div class="ivph">🛍️</div>`}
+          <div><span>${esc(i.name)}${i.note ? ` <small>(${esc(i.note)})</small>` : ""}</span><small>${i.qty} × ${rpf(i.price)}${i.discount ? ` <span class="ivd">· diskon −${rpf(i.discount)}</span>` : ""}</small></div>
           <b>${rpf(i.qty * i.price - (i.discount || 0))}</b></li>`).join("")}</ul>
-        ${o.shipping ? `<div class="ivsum"><span>Ongkir</span><span>${rpf(o.shipping)}</span></div>` : ""}
+        ${o.shipping ? `<div class="ivsum">+ Ongkir ${rpf(o.shipping)}</div>` : ""}
         <div class="ivfoot"><b>${rpf(o.total)}</b>${acts(o)}</div></div>`).join("")}</div>`;
   $("iv-table").insertAdjacentHTML("beforeend", pagerHtml("inv", iPage, list.length));
 }
@@ -1250,7 +1250,7 @@ function renderOrders() {
       <div class="plh"><span class="av">${esc(ini(o.customer))}</span>
         <div class="plm"><b>${esc(o.customer)}</b><small>${esc(o.invoice)} · ${esc(o.city || "-")}</small></div>
         <span class="ost ${st.k}">${esc(st.t)}</span></div>
-      <div class="pls shp"><div class="wide"><small>BARANG</small><span class="shi" title="${esc(itemsText(o))}">${esc(itemsText(o).replace(/\n/g, ", "))}</span></div>
+      <div class="pls shp"><div class="wide"><small>BARANG · ${o.items.reduce((n, i) => n + i.qty, 0)} pcs</small><ul class="shl">${o.items.map(i => `<li><span class="shq">${i.qty}×</span><span><b>${esc(i.name)}</b>${i.note ? ` <small>${esc(i.note)}</small>` : ""}</span></li>`).join("")}</ul></div>
         <div><small>KURIR</small><b>${o.courier ? esc(o.courier) : `<span class="mut">Belum dipilih</span>`}</b>${o.resi ? `<br><small class="rs">Resi ${esc(o.resi)}</small>` : ""}</div>
         <div><small>JADWAL KIRIM</small><b>${dfmt(o.shipDate)}</b></div>
         <div><small>DIBAYAR</small><span class="pay lunas">LUNAS</span> <small class="rs">${dfmt(o.paidAt)}</small></div></div>
